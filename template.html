@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dienstplan">
+<meta name="theme-color" content="#0f172a">
+<meta name="robots" content="noindex, nofollow">
+<title>Dienstplan RW 18</title>
+<style>
+:root{
+  --bg:#f3f4f6;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;
+  --rtw:#dc2626;--nef:#ea580c;--ktw:#2563eb;--spr:#7c3aed;--oth:#64748b;--accent:#dc2626;
+  --chip:#f1f5f9;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0b1120;--card:#131c2e;--ink:#e5e7eb;--muted:#94a3b8;--line:#1e293b;--chip:#1e293b;
+}}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+.wrap{max-width:720px;margin:0 auto;padding:0 14px calc(90px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:#0f172a;color:#fff;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px}
+header .in{max-width:720px;margin:0 auto;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+header h1{margin:0;font-size:18px;letter-spacing:.2px}
+header h1 span{display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--accent);margin-right:8px}
+header small{color:#94a3b8;font-size:12px}
+/* Lock */
+#lock{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+#lock form{width:100%;max-width:340px;background:var(--card);border-radius:16px;padding:24px;
+  box-shadow:0 10px 30px rgba(0,0,0,.08)}
+#lock h2{margin:0 0 4px;font-size:20px}
+#lock p{margin:0 0 16px;color:var(--muted);font-size:14px}
+#lock input[type=password]{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+#lock label{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--muted);margin:12px 0}
+.btn{width:100%;padding:12px;border:0;border-radius:10px;background:var(--accent);color:#fff;font-weight:600}
+.err{color:var(--accent);font-size:14px;min-height:20px;margin-top:8px}
+/* Date bar */
+.datebar{display:flex;align-items:center;gap:8px;margin:14px 0 6px}
+.datebar button{border:0;background:var(--card);width:44px;height:44px;border-radius:12px;font-size:20px}
+.datebar .d{flex:1;text-align:center}
+.datebar .d b{display:block;font-size:19px}
+.datebar .d span{font-size:13px;color:var(--muted)}
+.today{display:block;margin:0 auto 10px;border:0;background:none;color:var(--accent);font-weight:600;font-size:14px}
+.strip{display:flex;gap:6px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.strip button{flex:0 0 auto;border:0;background:var(--card);border-radius:10px;width:44px;padding:6px 0;font-size:12px;color:var(--muted)}
+.strip button b{display:block;font-size:16px;color:var(--ink)}
+.strip button.sel{background:var(--ink);color:var(--bg)}
+.strip button.sel b{color:var(--bg)}
+.strip button.we b{color:var(--accent)}
+/* Unit cards */
+.card{background:var(--card);border-radius:14px;margin:0 0 10px;overflow:hidden;border-left:5px solid var(--c,var(--oth))}
+.card h3{margin:0;padding:11px 14px 4px;font-size:16px;display:flex;justify-content:space-between;align-items:baseline}
+.card h3 small{color:var(--muted);font-weight:400;font-size:12px}
+.shift{display:grid;grid-template-columns:78px 1fr;gap:8px;padding:8px 14px;border-top:1px solid var(--line)}
+.shift:first-of-type{border-top:0}
+.shift .t{font-size:13px;color:var(--muted)}
+.card.oth .shift{grid-template-columns:1fr;gap:4px}
+.shift .t b{display:block;color:var(--ink);font-size:14px}
+.shift.live .t b::after{content:"● jetzt";color:#16a34a;font-size:11px;margin-left:6px;font-weight:600}
+.crew{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
+.p{background:var(--chip);border-radius:8px;padding:4px 9px;font-size:14px;border:0;text-align:left}
+.p.me{background:var(--accent);color:#fff}
+.p .tag{font-size:11px;color:var(--muted);margin-left:4px}
+.p.me .tag{color:#fee2e2}
+.none{color:var(--muted);font-size:14px;font-style:italic}
+.sec{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 4px 8px}
+/* Person */
+.search{position:relative;margin:14px 0}
+.search input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card)}
+.hits{background:var(--card);border-radius:12px;margin-top:6px;overflow:hidden}
+.hits button{display:block;width:100%;text-align:left;border:0;background:none;padding:11px 14px;border-top:1px solid var(--line)}
+.hits button:first-child{border-top:0}
+.ph{display:flex;justify-content:space-between;align-items:center;margin:8px 4px 12px}
+.ph h2{margin:0;font-size:20px}
+.star{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:7px 11px;font-size:14px}
+.star.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.row{display:grid;grid-template-columns:58px 1fr auto;gap:10px;align-items:center;background:var(--card);
+  border-radius:12px;padding:10px 12px;margin-bottom:6px;border-left:5px solid var(--c,var(--oth))}
+.row.past{opacity:.45}
+.row .dt b{display:block;font-size:17px}.row .dt{font-size:12px;color:var(--muted)}
+.row .u b{display:block}.row .u span{font-size:13px;color:var(--muted)}
+.row .tm{font-size:13px;color:var(--muted);text-align:right}
+.stats{display:flex;gap:8px;margin:0 0 14px}
+.stats div{flex:1;background:var(--card);border-radius:12px;padding:10px;text-align:center}
+.stats b{display:block;font-size:20px}.stats span{font-size:12px;color:var(--muted)}
+/* Tabs */
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);
+  display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;max-width:240px;border:0;background:none;padding:12px 0 10px;font-size:13px;color:var(--muted)}
+nav button b{display:block;font-size:20px;line-height:1.1}
+nav button.on{color:var(--accent);font-weight:600}
+.foot{color:var(--muted);font-size:12px;text-align:center;margin-top:20px}
+.foot button{border:0;background:none;color:var(--muted);text-decoration:underline;font-size:12px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="lock">
+  <form id="lf">
+    <h2>Dienstplan RW 18</h2>
+    <p>Bitte Passwort eingeben.</p>
+    <input type="password" id="pw" autocomplete="current-password" placeholder="Passwort" autofocus>
+    <label><input type="checkbox" id="keep" checked> Auf diesem Gerät angemeldet bleiben</label>
+    <button class="btn">Öffnen</button>
+    <div class="err" id="err"></div>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header><div class="in"><h1><span></span>Dienstplan <span id="abt" style="all:unset"></span></h1><small id="stand"></small></div></header>
+  <div class="wrap">
+    <section id="v-tag">
+      <div class="datebar">
+        <button id="prev" aria-label="Vortag">‹</button>
+        <div class="d"><b id="dname"></b><span id="dsub"></span></div>
+        <button id="next" aria-label="Folgetag">›</button>
+      </div>
+      <button class="today" id="tbtn">Heute</button>
+      <div class="strip" id="strip"></div>
+      <div id="units"></div>
+    </section>
+    <section id="v-person" hidden>
+      <div class="search">
+        <input id="q" type="search" placeholder="Name suchen …" autocomplete="off">
+        <div class="hits" id="hits"></div>
+      </div>
+      <div id="pview"></div>
+    </section>
+    <div class="foot">Quelle: CareMan-Export · Stand <span id="stand2"></span><br><button id="logout">Abmelden</button></div>
+  </div>
+  <nav>
+    <button data-v="tag" class="on"><b>🚑</b>Tag</button>
+    <button data-v="person"><b>👤</b>Person</button>
+  </nav>
+</div>
+
+<script>
+const ENC = /*__ENC__*/null;
+const WD = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+const WDL = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+const COLORS = {RTW:"var(--rtw)",NEF:"var(--nef)",KTW:"var(--ktw)",Springer:"var(--spr)"};
+const store = {
+  get(k){try{return localStorage.getItem(k)}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,v)}catch(e){}},
+  del(k){try{localStorage.removeItem(k)}catch(e){}}
+};
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function decrypt(pw){
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  const k = await crypto.subtle.deriveKey({name:"PBKDF2", salt:b64(ENC.salt), iterations:ENC.iter, hash:"SHA-256"},
+    key, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:b64(ENC.iv)}, k, b64(ENC.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+let D, Y, M, NDAYS, day, me = store.get("dp_me");
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pretty = n => { const [l,f] = n.split(", "); return f ? f + " " + l : n; };
+
+function info(code){
+  const P = code.length > 2 && code.endsWith("P") && !["TP"].includes(code);
+  const base = P ? code.slice(0,-1) : code;
+  const unit = D.einheiten.find(u => u.codes.includes(base));
+  const lg = D.legende[base] || D.legende[code] || {};
+  let shift = "Dienst", ord = 1;
+  if (unit){
+    if (/^F/.test(base)) {shift="Früh"; ord=0}
+    else if (/^S\d/.test(base)) {shift="Spät"; ord=2}
+    else if (/^N\d/.test(base) || /N$/.test(base)) {shift="Nacht"; ord=3}
+    else {shift="Tag"; ord=1}
+  }
+  const kind = unit ? (unit.name.match(/RTW|NEF|KTW|Springer/)||["?"])[0] : "other";
+  return {code, base, P: P || code==="TP", unit, shift, ord, von:lg.von, bis:lg.bis,
+          label: unit ? unit.name : (lg.name || code), color: COLORS[kind] || "var(--oth)"};
+}
+
+function crewFor(d){
+  const out = {};
+  for (const p of D.personen) for (const c of (p.tage[d]||[])) {
+    const i = info(c);
+    const key = i.unit ? i.unit.name : "Sonst: " + i.label;
+    ((out[key] ??= {}) [i.shift + "|" + i.ord] ??= {i, crew:[]}).crew.push({name:p.name, P:i.P});
+  }
+  return out;
+}
+
+function isLive(d, i){
+  const now = new Date();
+  if (!i.von) return false;
+  const [h1,m1] = i.von.split(":").map(Number), [h2,m2] = i.bis.split(":").map(Number);
+  const s = new Date(Y, M, d, h1, m1); let e = new Date(Y, M, d, h2, m2);
+  if (e <= s) e = new Date(Y, M, d+1, h2, m2);
+  return now >= s && now < e;
+}
+
+function chip(c){
+  const cls = "p" + (me === c.name ? " me" : "");
+  return `<button class="${cls}" data-person="${esc(c.name)}">${esc(pretty(c.name))}${c.P ? '<span class="tag">Prakt.</span>' : ""}</button>`;
+}
+
+function renderTag(){
+  const dt = new Date(Y, M, day);
+  $("dname").textContent = `${WDL[dt.getDay()]}, ${String(day).padStart(2,"0")}.${String(M+1).padStart(2,"0")}.`;
+  const now = new Date();
+  const isToday = now.getFullYear()===Y && now.getMonth()===M && now.getDate()===day;
+  $("dsub").textContent = isToday ? "Heute" : (now.getFullYear()===Y && now.getMonth()===M && now.getDate()+1===day ? "Morgen" : "");
+  $("tbtn").style.visibility = isToday ? "hidden" : "visible";
+  $("prev").disabled = day <= 1; $("next").disabled = day >= NDAYS;
+  $("strip").innerHTML = Array.from({length:NDAYS}, (_,k) => {
+    const d = k+1, w = new Date(Y,M,d).getDay();
+    return `<button data-day="${d}" class="${d===day?"sel":""} ${w===0||w===6?"we":""}">${WD[w]}<b>${d}</b></button>`;
+  }).join("");
+  const sel = $("strip").querySelector(".sel"); if (sel) sel.scrollIntoView({inline:"center", block:"nearest"});
+
+  const C = crewFor(String(day));
+  let html = "";
+  for (const u of D.einheiten){
+    const sh = C[u.name] || {};
+    const keys = Object.keys(sh).sort((a,b) => a.split("|")[1] - b.split("|")[1]);
+    if (!keys.length && u.name === "Springer") continue;
+    const kind = (u.name.match(/RTW|NEF|KTW|Springer/)||["?"])[0];
+    html += `<div class="card" style="--c:${COLORS[kind]||"var(--oth)"}"><h3>${esc(u.name)} <small>${esc(u.funk)}</small></h3>`;
+    if (!keys.length) html += `<div class="shift"><div class="t"></div><div class="none">nicht besetzt</div></div>`;
+    for (const k of keys){
+      const {i, crew} = sh[k];
+      crew.sort((a,b) => a.P - b.P);
+      html += `<div class="shift ${isLive(day,i)?"live":""}"><div class="t"><b>${i.shift}</b>${i.von||""}–${i.bis||""}</div>
+        <div class="crew">${crew.map(chip).join("")}</div></div>`;
+    }
+    html += `</div>`;
+  }
+  const other = Object.keys(C).filter(k => k.startsWith("Sonst: ")).sort();
+  if (other.length){
+    html += `<div class="sec">Außerdem</div><div class="card oth">`;
+    for (const k of other){
+      const g = Object.values(C[k])[0];
+      const crew = Object.values(C[k]).flatMap(x => x.crew);
+      html += `<div class="shift"><div class="t"><b style="display:inline">${esc(g.i.label)}</b> · ${g.i.von||""}–${g.i.bis||""}</div>
+        <div class="crew">${crew.map(chip).join("")}</div></div>`;
+    }
+    html += `</div>`;
+  }
+  $("units").innerHTML = html;
+}
+
+function renderPerson(name){
+  const p = D.personen.find(x => x.name === name);
+  if (!p){ $("pview").innerHTML = `<p class="none" style="text-align:center;margin-top:30px">Name suchen oder im Tagesplan auf eine Person tippen.</p>`; return; }
+  const now = new Date(); const todayN = (now.getFullYear()===Y && now.getMonth()===M) ? now.getDate() : (now > new Date(Y,M,NDAYS) ? 99 : 0);
+  const rows = [];
+  for (const [d, cs] of Object.entries(p.tage)) for (const c of cs) rows.push({d:+d, i:info(c)});
+  rows.sort((a,b) => a.d - b.d || a.i.ord - b.i.ord);
+  const n = r => r.filter(x => x.i.unit).length;
+  const nights = rows.filter(x => x.i.shift === "Nacht").length;
+  const upcoming = rows.filter(x => x.d >= todayN);
+  let html = `<div class="ph"><h2>${esc(pretty(p.name))}</h2>
+    <button class="star ${me===p.name?"on":""}" id="star">${me===p.name?"★ Das bin ich":"☆ Das bin ich"}</button></div>
+    <div class="stats"><div><b>${n(rows)}</b><span>Fahrdienste</span></div><div><b>${nights}</b><span>Nächte</span></div><div><b>${n(upcoming)}</b><span>noch offen</span></div></div>`;
+  for (const r of rows){
+    const dt = new Date(Y, M, r.d);
+    const partners = D.personen.filter(o => o !== p && (o.tage[r.d]||[]).some(c => { const j = info(c); return r.i.unit && j.unit === r.i.unit && j.shift === r.i.shift; })).map(o => pretty(o.name));
+    html += `<div class="row ${r.d < todayN ? "past":""}" style="--c:${r.i.color}">
+      <div class="dt">${WD[dt.getDay()]}<b>${String(r.d).padStart(2,"0")}.${String(M+1).padStart(2,"0")}.</b></div>
+      <div class="u"><b>${esc(r.i.label)}${r.i.unit ? " · " + r.i.shift : ""}${r.i.P ? " (Prakt.)" : ""}</b>
+        <span>${partners.length ? "mit " + esc(partners.join(", ")) : esc(r.i.code)}</span></div>
+      <div class="tm">${r.i.von||""}<br>${r.i.bis||""}</div></div>`;
+  }
+  $("pview").innerHTML = html;
+  $("star").onclick = () => { me = (me === p.name) ? null : p.name; me ? store.set("dp_me", me) : store.del("dp_me"); renderPerson(p.name); };
+}
+
+function show(v){
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  $("v-tag").hidden = v !== "tag"; $("v-person").hidden = v !== "person";
+  if (v === "tag") renderTag();
+  window.scrollTo(0,0);
+}
+
+function start(data){
+  D = data;
+  const [dd,mm,yy] = D.meta.von.split(".").map(Number);
+  Y = yy; M = mm-1; NDAYS = new Date(Y, M+1, 0).getDate();
+  const now = new Date();
+  day = (now.getFullYear()===Y && now.getMonth()===M) ? now.getDate() : 1;
+  $("abt").textContent = (D.meta.abteilung||"").replace(/^\d+\.\s*/,"").split("/")[0].trim();
+  $("stand").textContent = $("stand2").textContent = D.meta.stand;
+  $("lock").hidden = true; $("app").hidden = false;
+  $("prev").onclick = () => { if (day>1){day--; renderTag();} };
+  $("next").onclick = () => { if (day<NDAYS){day++; renderTag();} };
+  $("tbtn").onclick = () => { const n=new Date(); if(n.getFullYear()===Y&&n.getMonth()===M){day=n.getDate(); renderTag();} };
+  $("strip").onclick = e => { const b = e.target.closest("[data-day]"); if (b){ day = +b.dataset.day; renderTag(); } };
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-person]");
+    if (b){ show("person"); $("q").value = ""; $("hits").innerHTML = ""; renderPerson(b.dataset.person); }
+  });
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => { show(b.dataset.v); if (b.dataset.v==="person") renderPerson(me); });
+  $("q").oninput = () => {
+    const q = $("q").value.trim().toLowerCase();
+    $("hits").innerHTML = q ? D.personen.filter(p => p.name.toLowerCase().includes(q)).slice(0,8)
+      .map(p => `<button data-pick="${esc(p.name)}">${esc(pretty(p.name))}</button>`).join("") : "";
+  };
+  $("hits").onclick = e => { const b = e.target.closest("[data-pick]"); if (b){ $("hits").innerHTML=""; $("q").value=""; renderPerson(b.dataset.pick);} };
+  $("logout").onclick = () => { store.del("dp_pw"); location.reload(); };
+  // Swipe zwischen Tagen
+  let sx=null; $("units").addEventListener("touchstart", e => sx = e.touches[0].clientX, {passive:true});
+  $("units").addEventListener("touchend", e => { if (sx===null) return; const dx = e.changedTouches[0].clientX - sx; sx=null;
+    if (Math.abs(dx) > 70){ if (dx<0 && day<NDAYS) day++; else if (dx>0 && day>1) day--; renderTag(); } });
+  renderTag();
+}
+
+async function unlock(pw, remember){
+  try { const data = await decrypt(pw); if (remember) store.set("dp_pw", pw); start(data); return true; }
+  catch(e){ return false; }
+}
+$("lf").onsubmit = async e => {
+  e.preventDefault(); $("err").textContent = "";
+  if (!await unlock($("pw").value, $("keep").checked)) $("err").textContent = "Falsches Passwort.";
+};
+(async () => { const pw = store.get("dp_pw"); if (pw && !await unlock(pw, false)) store.del("dp_pw"); })();
+</script>
+</body>
+</html>
