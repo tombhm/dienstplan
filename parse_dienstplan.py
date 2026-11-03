@@ -11,14 +11,19 @@ NAME_X_MAX = 140          # alles links davon ist Namensspalte
 LINE_TOL = 3              # Toleranz beim Zusammenfassen von Textzeilen
 
 # Fahrzeug-Zuordnung der Kürzel (RW 18). Unbekannte Kürzel landen in "Sonstiges".
+# soll  = benötigte Besatzung pro Schicht (ohne Praktikanten)
+# pflicht = an welchen Wochentagen eine Schicht besetzt sein MUSS (0=So, 1=Mo … 6=Sa).
+#           Schichten, die nicht drinstehen, werden nur geprüft, wenn jemand eingeteilt ist.
+ALLE, MO_FR, MO_SA, WE = [0, 1, 2, 3, 4, 5, 6], [1, 2, 3, 4, 5], [1, 2, 3, 4, 5, 6], [0, 6]
 UNITS = [
-    ("RTW 1", "18-83-01", ["81T", "81N"]),
-    ("RTW 2", "18-RTW-2 (Mo–Fr)", ["82T"]),
-    ("RTW 3", "18-RTW-3", ["83T", "83N"]),
-    ("NEF", "18-82-01", ["1NT", "1NN"]),
-    ("NEF 00", "00-82-01", ["0NT", "0NN"]),
-    ("KTW 1", "18-KTW-1", ["F81", "S81", "N81"]),
-    ("Springer", "", ["SPT", "SPN"]),
+    {"name": "18-RTW-1", "typ": "RTW", "codes": ["81T", "81N"], "soll": 2, "pflicht": {"Tag": ALLE, "Nacht": ALLE}},
+    {"name": "18-RTW-2", "typ": "RTW", "codes": ["82T"], "soll": 2, "pflicht": {"Tag": MO_SA}},
+    {"name": "18-RTW-3", "typ": "RTW", "codes": ["83T", "83N"], "soll": 2, "pflicht": {"Tag": ALLE, "Nacht": ALLE}},
+    {"name": "11-NEF-1", "typ": "NEF", "codes": ["1NT", "1NN"], "soll": 1, "pflicht": {"Tag": ALLE, "Nacht": ALLE}},
+    {"name": "00-KIND-NEF-01", "typ": "Kinder-NEF", "codes": ["0NT", "0NN"], "soll": 1, "pflicht": {"Tag": ALLE, "Nacht": ALLE}},
+    {"name": "18-KTW-1", "typ": "KTW", "codes": ["F81", "S81", "N81"], "soll": 2,
+     "pflicht": {"Früh": MO_FR, "Spät": MO_FR, "Nacht": WE}},
+    {"name": "Springer", "typ": "Springer", "codes": ["SPT", "SPN"], "soll": 0, "pflicht": {}},
 ]
 
 
@@ -109,7 +114,7 @@ def main(src, dst):
     meta["stand"] = datetime.now().strftime("%d.%m.%Y %H:%M")
     unknown = sorted({c for p in people for cs in p["tage"].values() for c in cs} - set(legend))
     data = {"meta": meta, "legende": legend,
-            "einheiten": [{"name": n, "funk": f, "codes": c} for n, f, c in UNITS],
+            "einheiten": UNITS,
             "personen": people, "unbekannt": unknown}
     with open(dst, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)

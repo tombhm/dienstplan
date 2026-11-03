@@ -53,6 +53,7 @@ jobs:
       - name: Website bauen (verschlüsselt)
         env:
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+          DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
         run: |
           mkdir -p site
           python build_site.py data.json site/index.html
