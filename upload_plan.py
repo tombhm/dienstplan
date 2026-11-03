@@ -10,10 +10,13 @@ src, target = sys.argv[1], sys.argv[2].rstrip("/")
 secret = os.environ.get("APP_SECRET")
 if not secret:
     sys.exit("APP_SECRET fehlt")
+if not target:
+    sys.exit("Keine Zieladresse: Bitte über den Knopf „Aktualisieren“ auf der Website starten "
+             "oder in GitHub das Secret WORKER_URL (z. B. https://dienstplan-rw18.NAME.workers.dev) anlegen.")
 from urllib.parse import urlparse
 host = urlparse(target).hostname or ""
 allowed = os.environ.get("WORKER_URL", "").rstrip("/")
-if not (target == allowed or (target.startswith("https://") and host.endswith(".workers.dev")) or host == "localhost"):
+if not ((allowed and target == allowed) or (target.startswith("https://") and host.endswith(".workers.dev")) or host == "localhost"):
     sys.exit(f"Zieladresse nicht erlaubt: {target}")
 token = base64.urlsafe_b64encode(hmac.new(secret.encode(), b"ingest", hashlib.sha256).digest()).rstrip(b"=").decode()
 body = open(src, "rb").read()
