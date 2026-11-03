@@ -5,6 +5,7 @@ Aufruf:  python3 parse_dienstplan.py dienstplan.pdf data.json
 """
 import json, re, sys
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import pdfplumber
 
 NAME_X_MAX = 140          # alles links davon ist Namensspalte
@@ -111,7 +112,7 @@ def main(src, dst):
     with pdfplumber.open(src) as pdf:
         meta, people = parse_grid(pdf)
         legend = parse_legend(pdf)
-    meta["stand"] = datetime.now().strftime("%d.%m.%Y %H:%M")
+    meta["stand"] = datetime.now(ZoneInfo("Europe/Berlin")).strftime("%d.%m.%Y %H:%M")
     unknown = sorted({c for p in people for cs in p["tage"].values() for c in cs} - set(legend))
     data = {"meta": meta, "legende": legend,
             "einheiten": UNITS,
