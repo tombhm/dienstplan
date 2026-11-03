@@ -69,6 +69,9 @@ def click_first(page, what, candidates, timeout=20):
 
 def dump_clickables(page):
     """Hilft beim Anpassen: listet anklickbare Elemente (ohne Inhalte des Dienstplans)."""
+    if not DEBUG:  # Logs sind bei öffentlichem Projekt sichtbar -> Seiteninhalte nur im Fehlersuch-Modus ausgeben
+        log("(Details zur Seite nur mit DEBUG=1)")
+        return
     try:
         items = page.evaluate("""() => [...document.querySelectorAll('body *')]
             .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0

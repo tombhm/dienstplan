@@ -191,7 +191,7 @@ nav button.on{color:var(--red)}
 .sheet dt{color:var(--muted)}.sheet dd{margin:0}
 .sheet .btn{margin-top:8px;display:block;text-align:center;text-decoration:none}
 .sheet p{font-size:14px;color:var(--muted);margin:6px 0 0}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:50;background:#1c1c1e;color:#fff;
+.toast{pointer-events:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:50;background:#1c1c1e;color:#fff;
   padding:11px 16px;border-radius:12px;font-size:14px;max-width:92vw;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 /* Tutorial */
 #tour{position:fixed;inset:0;z-index:60}
@@ -220,7 +220,7 @@ nav button.on{color:var(--red)}
     <h2>Dienstplan RW 18</h2>
     <p>Bitte Passwort eingeben.</p>
     <input type="password" id="pw" autocomplete="current-password" placeholder="Passwort">
-    <label><input type="checkbox" id="keep" checked> Angemeldet bleiben</label>
+    <label><input type="checkbox" id="keep"> Angemeldet bleiben (nur eigenes Gerät)</label>
     <button class="btn">Öffnen</button>
     <div class="err" id="err"></div>
   </form>
@@ -260,8 +260,7 @@ nav button.on{color:var(--red)}
       </div>
       <div id="cbody"></div>
       <div class="exp" id="cexp">
-        <button id="xsub">📅 Im Kalender abonnieren</button>
-        <button id="xdl">⬇︎ Exportieren (.ics)</button>
+        <button id="xdl">📅 In den iPhone-Kalender übernehmen</button>
       </div>
       <div class="who" id="cwho"></div>
     </section>
@@ -272,7 +271,7 @@ nav button.on{color:var(--red)}
       <div id="pview"></div>
     </section>
 
-    <div class="foot">Quelle: CareMan · Stand <span id="stand2"></span><br><button id="tourAgain">Tutorial nochmal ansehen</button> · <button id="logout">Abmelden</button></div>
+    <div class="foot">Quelle: CareMan · Stand <span id="stand2"></span><br><button id="privacy">Datenschutz</button> · <button id="tourAgain">Tutorial</button> · <button id="logout">Abmelden</button></div>
   </div>
 
   <nav>
@@ -568,23 +567,54 @@ function showEvent(key){
 function openSheet(html){ $("sheet").innerHTML = `<div class="grab"></div>` + html; $("scrim").hidden = false; }
 function closeSheet(){ $("scrim").hidden = true; }
 
-function exportSheet(kind){
-  const tok = D.kal && D.kal[me];
-  if (!tok || !/^https?:/.test(location.protocol)){
-    openSheet(`<h3>Kalender-Export</h3><p>Der Export funktioniert auf der veröffentlichten Website (github.io). Dort bekommt jede Person ihren eigenen, geheimen Kalender-Link.</p><button class="btn alt" onclick="closeSheet()">OK</button>`);
-    return;
+/* Kalender-Datei wird NUR hier auf dem Gerät erzeugt – auf dem Server liegt nichts Lesbares. */
+function icsFor(name){
+  const enc = new TextEncoder();
+  const fold = line => { const out = []; let cur = "", n = 0;
+    for (const ch of line){ const b = enc.encode(ch).length; if (n + b > (out.length ? 74 : 75)){ out.push(cur); cur = ""; n = 0; } cur += ch; n += b; }
+    out.push(cur); return out.join("\r\n "); };
+  const e = t => String(t).replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  const dt = (d, m) => { const x = new Date(Y, M, d, 0, m); return `${x.getFullYear()}${pad(x.getMonth()+1)}${pad(x.getDate())}T${pad(x.getHours())}${pad(x.getMinutes())}00`; };
+  const now = new Date().toISOString().replace(/[-:]/g, "").slice(0,15) + "Z";
+  const L = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//RW18 Dienstplan//DE","CALSCALE:GREGORIAN","METHOD:PUBLISH",
+    "X-WR-CALNAME:Dienst RW 18","X-WR-TIMEZONE:Europe/Berlin",
+    "BEGIN:VTIMEZONE","TZID:Europe/Berlin",
+    "BEGIN:DAYLIGHT","TZOFFSETFROM:+0100","TZOFFSETTO:+0200","TZNAME:CEST","DTSTART:19700329T020000","RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU","END:DAYLIGHT",
+    "BEGIN:STANDARD","TZOFFSETFROM:+0200","TZOFFSETTO:+0100","TZNAME:CET","DTSTART:19701025T030000","RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU","END:STANDARD",
+    "END:VTIMEZONE"];
+  let n = 0;
+  for (const ev of eventsFor(name)){
+    if (!ev.i.von) continue;
+    const mates = ev.partners.map(x => pretty(x.name) + (x.P ? " (Prakt.)" : "")).join(", ");
+    const desc = ev.i.unit ? `Mitfahrer: ${mates || "noch niemand"}\nStand: ${D.meta.stand}` : `${ev.i.label}\nStand: ${D.meta.stand}`;
+    L.push("BEGIN:VEVENT", `UID:${Y}${pad(M+1)}${pad(ev.d)}-${ev.i.code}@dienstplan-rw18`, `DTSTAMP:${now}`,
+      `DTSTART;TZID=Europe/Berlin:${dt(ev.d, ev.s)}`, `DTEND;TZID=Europe/Berlin:${dt(ev.d, ev.e)}`,
+      `SUMMARY:${e(ev.i.code)}`, `DESCRIPTION:${e(desc)}`, "LOCATION:Rettungswache 18", "END:VEVENT");
+    n++;
   }
-  const base = location.href.split("?")[0].split("#")[0].replace(/[^/]*$/, "");
-  const https = base + "cal/" + tok + ".ics", webcal = https.replace(/^https?:/, "webcal:");
-  if (kind === "sub") openSheet(`<h3>Im Kalender abonnieren</h3>
-    <p>Deine Dienste erscheinen im Apple-Kalender als eigener Kalender <b>„Dienst RW 18“</b> – mit Uhrzeit, Schicht, Fahrzeug und Mitfahrern. Er <b>aktualisiert sich automatisch</b>, wenn sich der Dienstplan ändert.</p>
-    <a class="btn" href="${webcal}">📅 Abonnieren</a>
-    <p>Danach in Kalender → „Abonnieren“ bestätigen. Bei „Aktualisieren“ am besten „Jede Stunde“ wählen.</p>
-    <button class="btn alt" id="cp">Link kopieren</button><p>Der Link ist geheim und nur für dich – nicht weitergeben.</p>`);
-  else openSheet(`<h3>Einmalig exportieren</h3>
-    <p>Lädt alle deine Dienste dieses Monats als .ics-Datei. Auf dem iPhone öffnet sich danach „Alle hinzufügen“ für den Kalender. <b>Ändert sich der Plan, wird die Datei nicht aktualisiert</b> – dafür besser abonnieren.</p>
-    <a class="btn" href="${https}" download="Dienstplan-${esc(pretty(me)).replace(/\s+/g,"-")}.ics">⬇︎ .ics herunterladen</a>`);
-  const cp = $("cp"); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(webcal); toast("Link kopiert"); } catch(e){ toast(webcal); } };
+  L.push("END:VCALENDAR");
+  return {text: L.map(fold).join("\r\n") + "\r\n", n};
+}
+function exportSheet(){
+  const {text, n} = icsFor(me);
+  const file = `Dienste-${MON[M]}-${Y}.ics`;
+  const url = URL.createObjectURL(new Blob([text], {type:"text/calendar;charset=utf-8"}));
+  openSheet(`<h3>In den Kalender übernehmen</h3>
+    <p>${n} Dienste im ${MON[M]} ${Y} – mit Uhrzeit, Kürzel (z. B. 81T) und Mitfahrern.</p>
+    <a class="btn" href="${url}" download="${file}">📅 Kalenderdatei öffnen</a>
+    <p>Auf dem iPhone danach „Alle hinzufügen“ antippen. <b>Tipp:</b> Leg dafür in der Kalender-App einen eigenen Kalender „Dienst RW 18“ an und wähle ihn beim Hinzufügen aus. Ändert sich der Plan, löschst du diesen Kalender und importierst neu – so entstehen keine doppelten Termine.</p>
+    <p><b>Datenschutz:</b> Die Datei wird nur auf deinem Gerät erzeugt. Im Kalender landen auch die Namen deiner Mitfahrer – nutze dafür nur deinen eigenen Kalender und teile ihn nicht.</p>`);
+}
+function privacySheet(){
+  openSheet(`<h3>Datenschutz</h3>
+    <p><b>Zweck:</b> Einsicht in den Dienstplan der RW 18 – nur für Mitarbeitende, die ihn auch in CareMan sehen dürfen.</p>
+    <p><b>Welche Daten:</b> Namen, Dienstzeiten und Fahrzeugzuordnung des aktuellen Monats aus CareMan. Keine Urlaube, keine Fehlzeitengründe, keine Kontaktdaten.</p>
+    <p><b>Wie geschützt:</b> Der Dienstplan ist mit AES-256 verschlüsselt und nur mit dem Passwort lesbar – auch der Hosting-Anbieter (GitHub) kann ihn nicht lesen. Kein Tracking, keine Cookies, keine Statistik.</p>
+    <p><b>Auf deinem Gerät gespeichert:</b> nur, wenn du es wählst – Passwort („Angemeldet bleiben“), dein Name, die gewählte Ansicht. „Abmelden“ löscht alles davon.</p>
+    <p><b>Aktualisierung:</b> nur manuell über den Knopf „Aktualisieren“, nicht automatisch.</p>
+    <p><b>Regeln:</b> Passwort nicht weitergeben, keine Screenshots in Gruppen teilen, auf fremden Geräten abmelden.</p>
+    <p>Fragen oder Wunsch, nicht angezeigt zu werden: an die Wachenleitung bzw. den Betreiber dieser Seite wenden.</p>
+    <button class="btn alt" onclick="closeSheet()">Schließen</button>`);
 }
 
 /* ---------- Personen ---------- */
@@ -619,6 +649,9 @@ async function refresh(){
   const btn = $("rf");
   if (btn.classList.contains("spin")) return;
   if (!D.dispatch || !D.repo){ toast("Manuelles Aktualisieren ist noch nicht eingerichtet (DISPATCH_TOKEN fehlt)."); return; }
+  const last = +(store.get("dp_rf") || 0);
+  if (Date.now() - last < 5*60*1000){ toast(`Gerade erst aktualisiert – bitte ${Math.ceil((5*60*1000 - (Date.now() - last))/60000)} Min. warten.`); return; }
+  store.set("dp_rf", String(Date.now()));
   btn.classList.add("spin");
   const api = `https://api.github.com/repos/${D.repo}/actions`;
   const H = {Authorization: "Bearer " + D.dispatch, Accept: "application/vnd.github+json"};
@@ -646,7 +679,7 @@ async function refresh(){
     toast("Fertig – lade neuen Stand …", 0);
     for (let k = 0; k < 30; k++){ const v = await standNow(); if (v && v !== ENC.v) return reloadFresh(); await sleep(4000); }
     reloadFresh();
-  } catch(e){ toast(e.message || "Fehler beim Aktualisieren", 6000); }
+  } catch(e){ store.del("dp_rf"); toast(e.message || "Fehler beim Aktualisieren", 6000); }
   finally { btn.classList.remove("spin"); }
 }
 
@@ -655,7 +688,7 @@ const isStandalone = () => window.navigator.standalone === true || matchMedia("(
 function tourSteps(){
   const st = [
     {title:"Willkommen! 👋", text:"Das ist der Dienstplan der RW 18 – immer aktuell aus CareMan. Ich zeige dir in einer Minute, was die Seite kann.", view:"wache"},
-    {sel:"#rf", title:"Immer aktuell", text:"Der Plan wird automatisch alle 2 Stunden aus CareMan geholt. Wenn du nicht warten willst: hier tippen – nach 2–3 Minuten lädt der neue Stand. Wann zuletzt aktualisiert wurde, steht links daneben.", view:"wache"},
+    {sel:"#rf", title:"Aktualisieren", text:"Der Plan wird nicht automatisch geholt. Tippe hier, um den aktuellen Stand aus CareMan zu laden – nach 2–3 Minuten ist er da. Wann zuletzt aktualisiert wurde, steht links daneben.", view:"wache"},
     {sel:"#strip", title:"Tag auswählen", text:"Tippe auf einen Tag – oder wische auf der Seite nach links/rechts. Ein oranger Punkt heißt: An diesem Tag ist mindestens ein Fahrzeug nicht voll besetzt.", view:"wache"},
     {sel:"#units .card", title:"Wer fährt was?", text:"Pro Fahrzeug siehst du Tag- und Nachtdienst mit Besatzung. „● jetzt“ markiert die laufende Schicht. Orange = nur teilweise besetzt, rot = gar nicht besetzt. Praktikanten zählen nicht mit.", view:"wache"},
     {sel:"#units .p", title:"Auf Namen tippen", text:"Tippe auf einen Namen, um alle Dienste dieser Person im Monat zu sehen.", view:"wache"},
@@ -663,12 +696,12 @@ function tourSteps(){
   ];
   if (me) st.push(
     {sel:"#seg", title:"Tag · Woche · Monat", text:"Wechsle zwischen den Ansichten. Im Monat stehen die Kürzel (z. B. 81T, 83N). Tippe auf einen Dienst für Uhrzeit und Mitfahrer.", view:"kal"},
-    {sel:"#cexp", title:"Ab in den iPhone-Kalender", text:"„Abonnieren“ legt einen Kalender „Dienst RW 18“ an, der sich automatisch aktualisiert. „Exportieren“ lädt die Dienste einmalig als Datei.", view:"kal"});
+    {sel:"#cexp", title:"Ab in den iPhone-Kalender", text:"Übernimmt deine Dienste des Monats mit Uhrzeit, Kürzel und Mitfahrern in den iPhone-Kalender. Die Datei wird nur auf deinem Gerät erzeugt.", view:"kal"});
   else st.push(
     {sel:"#q2", title:"Wer bist du?", text:"Gib hier nach dem Tutorial deinen Namen ein. Danach siehst du deine Dienste als Tag-, Wochen- und Monatsansicht und kannst sie in den iPhone-Kalender übernehmen.", view:"kal"});
   st.push({sel:"nav [data-v=pers]", title:"Personen", text:"Hier kannst du jede Person suchen. Mit „Das bin ich“ legst du fest, wessen Kalender du unter „Mein Kalender“ siehst.", view:"wache"});
   if (!isStandalone()) st.push({title:"Tipp: Als App speichern 📱", text:"In Safari unten auf Teilen (□↑) tippen und „Zum Home-Bildschirm“ wählen. Dann hast du den Dienstplan wie eine App – mit eigenem Symbol.", view:"wache"});
-  st.push({title:"Fertig! ✅", text:"Das war's. Das Tutorial kannst du jederzeit unten auf der Seite nochmal starten.", view:"wache"});
+  st.push({title:"Fertig! ✅", text:"Das war's. Bitte gib das Passwort nicht weiter – mehr dazu unten unter „Datenschutz“. Dort kannst du das Tutorial auch jederzeit nochmal starten.", view:"wache"});
   return st;
 }
 let tourI = 0, tourS = [];
@@ -738,7 +771,7 @@ function start(data){
   let cx = null;
   $("cbody").addEventListener("touchstart", e => cx = e.touches[0].clientX, {passive:true});
   $("cbody").addEventListener("touchend", e => { if (cx === null) return; const dx = e.changedTouches[0].clientX - cx; cx = null; if (Math.abs(dx) > 70) calShift(dx < 0 ? 1 : -1); });
-  $("xsub").onclick = () => exportSheet("sub"); $("xdl").onclick = () => exportSheet("dl");
+  $("xdl").onclick = exportSheet;
 
   document.addEventListener("click", e => {
     const dd = e.target.closest("[data-date]");
@@ -759,7 +792,8 @@ function start(data){
   };
   $("hits").onclick = e => { const b = e.target.closest("[data-pick]"); if (b){ $("hits").innerHTML = ""; $("q").value = ""; renderPerson(b.dataset.pick); } };
   $("rf").onclick = refresh;
-  $("logout").onclick = () => { store.del("dp_pw"); location.reload(); };
+  $("logout").onclick = () => { try { Object.keys(localStorage).filter(k => k.startsWith("dp_") && k !== "dp_tour").forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch(e){} location.replace(location.pathname); };
+  $("privacy").onclick = privacySheet;
   $("tourAgain").onclick = startTour;
   show(store.get("dp_tab") || "wache");
   if (!store.get("dp_tour")) setTimeout(startTour, 500);
