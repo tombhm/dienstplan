@@ -1,25 +1,54 @@
 name: Dienstplan aktualisieren
 
-# Läuft NUR, wenn jemand auf der Website auf "Aktualisieren" tippt
-# (oder du hier unter Actions auf "Run workflow" klickst). Kein Zeitplan.
+# 1) Wenn du Dateien im Projekt änderst (Push): Server bei Cloudflare neu einrichten.
+# 2) Wenn jemand auf der Website auf "Aktualisieren" tippt: Dienstplan aus CareMan holen
+#    und an den Server schicken. Es gibt KEINEN Zeitplan.
 on:
+  push:
+    branches: [main, master]
   workflow_dispatch:
+    inputs:
+      ziel:
+        description: "Adresse der Website (leer lassen = Secret WORKER_URL)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: dienstplan
+  group: dienstplan-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
-  update:
+  server:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Server bei Cloudflare einrichten
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          secrets: |
+            APP_SECRET
+            RESEND_API_KEY
+            ADMIN_EMAIL
+            ADMIN_USERNAME
+            GH_TOKEN
+            GH_REPO
+        env:
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+          GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+  update:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -44,22 +73,12 @@ jobs:
       - name: PDF auswerten
         run: python parse_dienstplan.py dienstplan.pdf data.json
 
-      - name: Website bauen (verschlüsselt)
+      - name: Dienstplan an den Server schicken
         env:
-          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
-          DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
-        run: |
-          mkdir -p site
-          python build_site.py data.json site/index.html
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          ZIEL: ${{ inputs.ziel != '' && inputs.ziel || secrets.WORKER_URL }}
+        run: python upload_plan.py data.json "$ZIEL"
 
-      - name: Unverschlüsselte Daten sofort löschen
+      - name: Daten auf dem GitHub-Rechner sofort löschen
         if: always()
         run: rm -rf dienstplan.pdf data.json debug
-
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-          retention-days: 1
-      - id: deploy
-        uses: actions/deploy-pages@v4

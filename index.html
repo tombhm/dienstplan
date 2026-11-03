@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dienstplan">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#101828">
+<meta name="robots" content="noindex, nofollow">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Dienstplan RW 18</title>
+<style>
+:root{
+  --bg:#f2f2f7;--card:#fff;--ink:#000;--ink2:#3c3c43;--muted:#8e8e93;--line:#e5e5ea;--fill:#f2f2f7;
+  --red:#ff3b30;--orange:#ff9500;--green:#34c759;
+  --RTW:#ff3b30;--NEF:#ff9500;--KINEF:#af52de;--KTW:#007aff;--SPR:#30b0c7;--OTH:#8e8e93;
+  --hdr:#101828;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#000;--card:#1c1c1e;--ink:#fff;--ink2:#ebebf5;--muted:#8e8e93;--line:#38383a;--fill:#2c2c2e;
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:16px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+.wrap{max-width:760px;margin:0 auto;padding:0 12px calc(96px + env(safe-area-inset-bottom))}
+
+/* Header */
+header{position:sticky;top:0;z-index:20;background:var(--hdr);color:#fff;padding:calc(8px + env(safe-area-inset-top)) 12px 8px}
+header .in{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:10px}
+header img{width:30px;height:30px;border-radius:7px}
+header .tt{flex:1;min-width:0}
+header h1{margin:0;font-size:17px;font-weight:700}
+header small{display:block;color:#98a2b3;font-size:11.5px}
+.rf{border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:10px;height:36px;padding:0 12px;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600}
+.rf svg{width:17px;height:17px}
+.rf.spin svg{animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* Lock */
+#lock{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+#lock form{width:100%;max-width:340px;background:var(--card);border-radius:20px;padding:26px;text-align:center}
+#lock img{width:84px;height:84px;border-radius:19px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+#lock h2{margin:14px 0 2px;font-size:21px}
+#lock p{margin:0 0 18px;color:var(--muted);font-size:14px}
+#lock input:not([type=checkbox]){width:100%;padding:13px 14px;border:0;border-radius:11px;background:var(--fill);font-size:17px;margin-top:8px}
+#lock .seg{margin:0 0 6px}
+#lock .hint{font-size:13px;color:var(--muted);margin:8px 2px 0;text-align:left}
+#lock .okmsg{background:color-mix(in srgb,var(--green) 14%,transparent);color:var(--ink);border-radius:11px;padding:11px 12px;font-size:14px;text-align:left;margin-top:10px}
+.ulist .ur{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:.5px solid var(--line)}
+.ulist .ur:first-child{border-top:0}
+.ulist .ur div{flex:1;min-width:0}.ulist .ur div b{display:block}.ulist .ur div span{font-size:12.5px;color:var(--muted)}
+.ulist .ur button{border:0;border-radius:8px;padding:6px 9px;font-size:13px;font-weight:600;background:var(--fill)}
+.ulist .ur button.g{background:var(--green);color:#fff}.ulist .ur button.r{color:var(--red)}
+.st-pending{color:var(--orange)!important;font-weight:600}.st-blocked{color:var(--red)!important;font-weight:600}
+.sheet input{width:100%;padding:12px 13px;border:0;border-radius:10px;background:var(--fill);font-size:16px;margin-top:8px}
+#lock label{display:flex;gap:8px;align-items:center;justify-content:center;font-size:14px;color:var(--muted);margin:14px 0}
+.btn{width:100%;padding:13px;border:0;border-radius:12px;background:var(--red);color:#fff;font-weight:600;font-size:17px}
+.btn.alt{background:var(--fill);color:var(--ink)}
+.err{color:var(--red);font-size:14px;min-height:20px;margin-top:8px}
+
+/* Wache */
+.datebar{display:flex;align-items:center;gap:8px;margin:12px 0 4px}
+.datebar>button{border:0;background:var(--card);width:42px;height:42px;border-radius:12px;font-size:22px;color:var(--red)}
+.datebar>button:disabled{opacity:.3}
+.datebar .d{flex:1;text-align:center}
+.datebar .d b{display:block;font-size:19px}
+.datebar .d span{font-size:13px;color:var(--muted)}
+.strip{display:flex;gap:5px;overflow-x:auto;padding:6px 0 8px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.strip button{flex:0 0 auto;position:relative;border:0;background:var(--card);border-radius:11px;width:43px;padding:6px 0 9px;font-size:11.5px;color:var(--muted)}
+.strip button b{display:block;font-size:17px;color:var(--ink);font-weight:600}
+.strip button.we b{color:var(--red)}
+.strip button.sel{background:var(--ink)}
+.strip button.sel b,.strip button.sel{color:var(--bg)}
+.strip button i{position:absolute;left:50%;bottom:3px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--orange)}
+.summary{margin:4px 2px 12px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+.summary.ok{color:var(--green)}.summary.bad{color:var(--orange)}
+.card{background:var(--card);border-radius:14px;margin:0 0 10px;overflow:hidden;border-left:5px solid var(--c,var(--OTH))}
+.card h3{margin:0;padding:11px 14px 3px;font-size:17px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card h3 small{color:var(--muted);font-weight:500;font-size:12px}
+.shift{display:grid;grid-template-columns:86px 1fr;gap:8px;padding:9px 14px;border-top:.5px solid var(--line);align-items:start}
+.card h3+.shift{border-top:0}
+.shift .t{font-size:12.5px;color:var(--muted)}
+.shift .t b{display:block;color:var(--ink);font-size:14.5px}
+.shift.live .t b::after{content:" ● jetzt";color:var(--green);font-size:11px}
+.shift.unter{background:color-mix(in srgb,var(--orange) 9%,transparent)}
+.shift.leer{background:color-mix(in srgb,var(--red) 9%,transparent)}
+.crew{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.p{background:var(--fill);border-radius:8px;padding:4px 9px;font-size:14px;border:0}
+.p.me{background:var(--red);color:#fff}
+.p .tag{font-size:11px;color:var(--muted);margin-left:4px}
+.p.me .tag{color:#ffe1df}
+.badge{font-size:12px;font-weight:700;border-radius:7px;padding:3px 7px;white-space:nowrap}
+.badge.unter{background:var(--orange);color:#fff}
+.badge.leer{background:var(--red);color:#fff}
+.none{color:var(--muted);font-size:14px;font-style:italic}
+.sec{font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 4px 8px}
+.card.oth .shift{grid-template-columns:1fr;gap:5px}
+
+/* Kalender (Apple-Stil) */
+.calhead{position:sticky;top:calc(52px + env(safe-area-inset-top));z-index:10;background:var(--bg);padding:10px 0 8px;margin:0 -12px;padding-left:12px;padding-right:12px}
+.ctop{display:flex;align-items:center;gap:6px}
+.ctop h2{margin:0;font-size:26px;font-weight:800;flex:1;letter-spacing:-.3px}
+.ctop h2 span{color:var(--red)}
+.ib{border:0;background:none;color:var(--red);font-size:16px;padding:6px 8px;border-radius:8px}
+.ib:disabled{opacity:.3}
+.ib.big{font-size:26px;line-height:1;padding:2px 10px}
+.seg{display:flex;background:var(--fill);border-radius:9px;padding:2px;margin:10px 0 0}
+.seg button{flex:1;border:0;background:none;border-radius:7px;padding:6px 0;font-size:13.5px;font-weight:600;color:var(--ink2)}
+.seg button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.15);color:var(--ink)}
+.who{display:flex;justify-content:space-between;align-items:center;margin:10px 2px 0;font-size:13px;color:var(--muted)}
+.who b{color:var(--ink)}
+.who button{border:0;background:none;color:var(--red);font-size:13px;padding:0}
+/* Monat */
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);background:var(--card);border-radius:14px;overflow:hidden}
+.mgrid .wd{font-size:11px;color:var(--muted);text-align:center;padding:7px 0 4px;font-weight:600}
+.mcell{min-height:74px;border-top:.5px solid var(--line);padding:3px 2px;background:none;border-left:0;border-right:0;border-bottom:0;text-align:center;display:flex;flex-direction:column;align-items:stretch;gap:2px}
+.mcell .n{align-self:center;width:26px;height:26px;line-height:26px;border-radius:50%;font-size:15px;font-weight:500}
+.mcell.out{opacity:.3}
+.mcell.we .n{color:var(--muted)}
+.mcell.today .n{color:var(--red);font-weight:700}
+.mcell.sel .n{background:var(--ink);color:var(--bg)}
+.mcell.sel.today .n{background:var(--red);color:#fff}
+.pill{font-size:10px;font-weight:600;border-radius:4px;padding:1px 3px;color:#fff;background:var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.daylist{margin-top:12px}
+.ev{display:flex;gap:10px;background:var(--card);border-radius:12px;padding:11px 12px;margin-bottom:8px;border:0;width:100%;text-align:left}
+.ev .bar{width:4px;border-radius:2px;background:var(--c)}
+.ev .bd{flex:1;min-width:0}
+.ev .bd b{display:block;font-size:16px}
+.ev .bd span{display:block;font-size:13.5px;color:var(--muted)}
+.ev .tm{font-size:13px;color:var(--muted);text-align:right;white-space:nowrap}
+.empty{color:var(--muted);text-align:center;padding:22px 0;font-size:15px}
+/* Woche / Tag */
+.wstrip{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-top:10px}
+.wstrip button{border:0;background:none;padding:2px 0;font-size:11px;color:var(--muted);font-weight:600}
+.wstrip button b{display:block;margin:3px auto 0;width:32px;height:32px;line-height:32px;border-radius:50%;font-size:17px;color:var(--ink);font-weight:500}
+.wstrip button.today b{color:var(--red);font-weight:700}
+.wstrip button.sel b{background:var(--ink);color:var(--bg)}
+.wstrip button.sel.today b{background:var(--red);color:#fff}
+.wstrip button i{display:block;margin:2px auto 0;width:5px;height:5px;border-radius:50%;background:var(--muted)}
+.wstrip button i.no{background:none}
+.tl{position:relative;background:var(--card);border-radius:14px;overflow:hidden;margin-top:8px}
+.tl .grid{position:relative;margin-left:44px}
+.tl .hr{position:absolute;left:-44px;right:0;border-top:.5px solid var(--line);font-size:10.5px;color:var(--muted)}
+.tl .hr span{position:absolute;left:6px;top:-7px;background:var(--card);padding-right:4px}
+.tl .cols{position:absolute;inset:0;display:grid}
+.tl .col{position:relative;border-left:.5px solid var(--line)}
+.tl .col.today{background:color-mix(in srgb,var(--red) 5%,transparent)}
+.blk{position:absolute;left:2px;right:2px;border-radius:6px;padding:3px 5px;overflow:hidden;font-size:11px;line-height:1.25;color:var(--ink);
+  background:color-mix(in srgb,var(--c) 22%,var(--card));border:0;border-left:3px solid var(--c);text-align:left}
+.blk b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:clip;letter-spacing:-.2px}
+.wk .blk{padding:3px 3px;font-size:10px}
+.day .blk{font-size:13px;padding:6px 9px}
+.day .blk b{font-size:15px}
+.now{position:absolute;left:0;right:0;border-top:2px solid var(--red);z-index:3}
+.now::before{content:"";position:absolute;left:-5px;top:-6px;width:10px;height:10px;border-radius:50%;background:var(--red)}
+.wkhead{display:grid;grid-template-columns:44px repeat(7,1fr);text-align:center;font-size:11px;color:var(--muted);font-weight:600;margin-top:10px}
+.wkhead button{border:0;background:none;padding:0;font-size:11px;color:var(--muted);font-weight:600}
+.wkhead b{display:block;margin:2px auto 0;width:28px;height:28px;line-height:28px;border-radius:50%;font-size:15px;color:var(--ink);font-weight:500}
+.wkhead .today b{background:var(--red);color:#fff}
+.exp{display:flex;gap:8px;margin:14px 0 0}
+.exp button{flex:1;border:0;background:var(--card);border-radius:12px;padding:12px 6px;font-size:14px;font-weight:600;color:var(--red)}
+
+/* Personen */
+.search input{width:100%;padding:11px 14px;border-radius:11px;border:0;background:var(--card);margin:14px 0 0;font-size:16px}
+.hits{background:var(--card);border-radius:12px;margin-top:6px;overflow:hidden}
+.hits button{display:block;width:100%;text-align:left;border:0;background:none;padding:12px 14px;border-top:.5px solid var(--line)}
+.hits button:first-child{border-top:0}
+.ph{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 12px;gap:10px}
+.ph h2{margin:0;font-size:22px}
+.star{border:0;background:var(--card);border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;white-space:nowrap}
+.star.on{background:var(--red);color:#fff}
+.stats{display:flex;gap:8px;margin:0 0 12px}
+.stats div{flex:1;background:var(--card);border-radius:12px;padding:10px;text-align:center}
+.stats b{display:block;font-size:20px}.stats span{font-size:12px;color:var(--muted)}
+.row{display:grid;grid-template-columns:54px 1fr auto;gap:10px;align-items:center;background:var(--card);border-radius:12px;padding:10px 12px;margin-bottom:6px;border-left:5px solid var(--c,var(--OTH))}
+.row.past{opacity:.45}
+.row .dt{font-size:12px;color:var(--muted)}.row .dt b{display:block;font-size:16px;color:var(--ink)}
+.row .u b{display:block}.row .u span{font-size:13px;color:var(--muted)}
+.row .tm{font-size:13px;color:var(--muted);text-align:right}
+
+/* Nav, Sheet, Toast */
+nav{position:fixed;bottom:0;left:0;right:0;z-index:20;background:color-mix(in srgb,var(--card) 88%,transparent);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:.5px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;max-width:200px;border:0;background:none;padding:8px 0 6px;font-size:10.5px;color:var(--muted);font-weight:500}
+nav button svg{display:block;margin:0 auto 2px;width:25px;height:25px}
+nav button.on{color:var(--red)}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:10px 18px calc(22px + env(safe-area-inset-bottom));max-height:85vh;overflow:auto}
+.sheet .grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
+.sheet h3{margin:0 0 2px;font-size:22px}
+.sheet .sub{color:var(--muted);margin-bottom:14px}
+.sheet dl{display:grid;grid-template-columns:100px 1fr;gap:8px 10px;margin:0 0 16px;font-size:15px}
+.sheet dt{color:var(--muted)}.sheet dd{margin:0}
+.sheet .btn{margin-top:8px;display:block;text-align:center;text-decoration:none}
+.sheet p{font-size:14px;color:var(--muted);margin:6px 0 0}
+.toast{pointer-events:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:50;background:#1c1c1e;color:#fff;
+  padding:11px 16px;border-radius:12px;font-size:14px;max-width:92vw;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+/* Tutorial */
+#tour{position:fixed;inset:0;z-index:60}
+#tour .hl{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.62);transition:all .3s ease;pointer-events:none}
+#tour .hl.none{width:0!important;height:0!important;left:50%!important;top:45%!important}
+#tour .tip{position:fixed;left:12px;right:12px;max-width:420px;margin:0 auto;background:var(--card);border-radius:16px;padding:16px 16px 12px;
+  box-shadow:0 12px 40px rgba(0,0,0,.35);transition:top .3s ease}
+#tour .tip .st{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px}
+#tour .tip h4{margin:0 0 6px;font-size:18px}
+#tour .tip p{margin:0 0 12px;font-size:15px;color:var(--ink2);line-height:1.4}
+#tour .tip .bt{display:flex;gap:8px;align-items:center}
+#tour .tip .bt .sk{border:0;background:none;color:var(--muted);font-size:14px;padding:8px 4px;margin-right:auto}
+#tour .tip .bt .bk{border:0;background:var(--fill);border-radius:10px;padding:9px 14px;font-weight:600}
+#tour .tip .bt .nx{border:0;background:var(--red);color:#fff;border-radius:10px;padding:9px 16px;font-weight:600}
+#tour .dots{display:flex;gap:4px;margin-bottom:8px}
+#tour .dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+#tour .dots i.on{background:var(--red);width:16px;border-radius:3px}
+.foot{color:var(--muted);font-size:12px;text-align:center;margin-top:22px}
+.foot button{border:0;background:none;color:var(--muted);text-decoration:underline;font-size:12px}
+</style>
+</head>
+<body>
+<div id="lock">
+  <form id="lf" autocomplete="on">
+    <img src="icon-180.png" alt="">
+    <h2>Dienstplan RW 18</h2>
+    <p id="asub">Bitte melde dich an.</p>
+    <div class="seg" id="aseg"><button type="button" data-a="login" class="on">Anmelden</button><button type="button" data-a="reg">Registrieren</button></div>
+    <input id="au" placeholder="Benutzername" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <input id="an" placeholder="Vor- und Nachname (wie im Dienstplan)" autocomplete="name" hidden>
+    <input id="ap" type="password" placeholder="Passwort" autocomplete="current-password">
+    <input id="ap2" type="password" placeholder="Passwort wiederholen" autocomplete="new-password" hidden>
+    <p class="hint" id="ahint" hidden>Benutzername: 3–30 Zeichen (Buchstaben, Zahlen, . - _). Passwort: mindestens 10 Zeichen. Nach der Registrierung muss dein Zugang erst freigegeben werden.</p>
+    <label id="akeep"><input type="checkbox" id="keep"> Angemeldet bleiben (nur eigenes Gerät)</label>
+    <button class="btn" id="abtn">Anmelden</button>
+    <div class="err" id="err"></div>
+    <div id="amsg"></div>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header><div class="in">
+    <img src="icon-180.png" alt="">
+    <div class="tt"><h1>Dienstplan RW 18</h1><small id="stand"></small></div>
+    <button class="rf" id="rf" aria-label="Jetzt aktualisieren">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      <span>Aktualisieren</span></button>
+  </div></header>
+
+  <div class="wrap">
+    <section id="v-wache">
+      <div class="datebar">
+        <button id="prev" aria-label="Vortag">‹</button>
+        <div class="d"><b id="dname"></b><span id="dsub"></span></div>
+        <button id="next" aria-label="Folgetag">›</button>
+      </div>
+      <div class="strip" id="strip"></div>
+      <div class="summary" id="summary"></div>
+      <div id="units"></div>
+    </section>
+
+    <section id="v-kal" hidden>
+      <div class="calhead">
+        <div class="ctop">
+          <button class="ib big" id="cprev" aria-label="Zurück">‹</button>
+          <h2 id="ctitle"></h2>
+          <button class="ib" id="ctoday">Heute</button>
+          <button class="ib big" id="cnext" aria-label="Weiter">›</button>
+        </div>
+        <div class="seg" id="seg"><button data-cv="tag">Tag</button><button data-cv="woche">Woche</button><button data-cv="monat">Monat</button></div>
+        <div id="cstrip"></div>
+      </div>
+      <div id="cbody"></div>
+      <div class="exp" id="cexp">
+        <button id="xdl">📅 In den iPhone-Kalender übernehmen</button>
+      </div>
+      <div class="who" id="cwho"></div>
+    </section>
+
+    <section id="v-pers" hidden>
+      <div class="search"><input id="q" type="search" placeholder="Name suchen …" autocomplete="off"></div>
+      <div class="hits" id="hits"></div>
+      <div id="pview"></div>
+    </section>
+
+    <div class="foot">Quelle: CareMan · Stand <span id="stand2"></span><br>Angemeldet als <b id="whoami"></b><br><button id="admin" hidden>Benutzer verwalten</button><span id="adminSep" hidden> · </span><button id="pwchg">Passwort ändern</button> · <button id="privacy">Datenschutz</button> · <button id="tourAgain">Tutorial</button> · <button id="logout">Abmelden</button></div>
+  </div>
+
+  <nav>
+    <button data-v="wache" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M2 16V8.5A1.5 1.5 0 0 1 3.5 7H14l4 4h2.5A1.5 1.5 0 0 1 22 12.5V16h-2"/><path d="M6 16H2M16 16H9"/><circle cx="7.5" cy="16.5" r="1.8"/><circle cx="17.5" cy="16.5" r="1.8"/><path d="M8 9.5v4M6 11.5h4"/><path d="M8 3.5v1.5M5 4.5l1 1M11 4.5l-1 1"/></svg>Wache</button>
+    <button data-v="kal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><circle cx="8" cy="14" r=".6" fill="currentColor"/><circle cx="12" cy="14" r=".6" fill="currentColor"/><circle cx="16" cy="14" r=".6" fill="currentColor"/><circle cx="8" cy="17.5" r=".6" fill="currentColor"/><circle cx="12" cy="17.5" r=".6" fill="currentColor"/></svg>Mein Kalender</button>
+    <button data-v="pers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M15.5 4.8a3.3 3.3 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.4 3.5 5.2"/></svg>Personen</button>
+  </nav>
+</div>
+
+<div class="scrim" id="scrim" hidden><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast" hidden></div>
+<div id="tour" hidden><div class="hl" id="tourHl"></div><div class="tip" id="tourTip"></div></div>
+
+<script>
+const WD = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+const WDL = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+const MON = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const KINDVAR = {"RTW":"var(--RTW)","NEF":"var(--NEF)","Kinder-NEF":"var(--KINEF)","KTW":"var(--KTW)","Springer":"var(--SPR)"};
+const OTHER = {BFRA:"Berufsschule", KLA:"Klinikum", FOB:"Fortbildung", IN8:"Innendienst", ZF:"Zertifizierung", TP:"Praktikum"};
+const SHIFTNAME = {"Früh":"Frühdienst","Tag":"Tagdienst","Spät":"Spätdienst","Nacht":"Nachtdienst"};
+const store = {
+  get(k){try{return localStorage.getItem(k)}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,v)}catch(e){}},
+  del(k){try{localStorage.removeItem(k)}catch(e){}}
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pretty = n => { const [l,f] = n.split(", "); return f ? f + " " + l : n; };
+const pad = n => String(n).padStart(2,"0");
+
+let D, Y, M, NDAYS, me = store.get("dp_me"), wDay, BYDAY = {};
+const cal = {view: store.get("dp_cv") || "monat", date: null};
+
+/* ---------- Daten ---------- */
+function shiftOf(base){
+  if (/^F/.test(base)) return ["Früh",0];
+  if (/^S\d/.test(base)) return ["Spät",2];
+  if (/^N\d/.test(base) || /N$/.test(base)) return ["Nacht",3];
+  return ["Tag",1];
+}
+const INFO = {};
+function info(code){
+  if (INFO[code]) return INFO[code];
+  const P = code.endsWith("P") && code.length > 2;
+  const base = P && code !== "TP" ? code.slice(0,-1) : code;
+  const unit = D.einheiten.find(u => u.codes.includes(base));
+  const lg = D.legende[base] || D.legende[code] || {};
+  const [shift, ord] = unit ? shiftOf(base) : ["Dienst", 1];
+  const kurz = unit ? (unit.typ === "Kinder-NEF" ? "Ki-NEF" : unit.name.replace(/^\d+-/, "")) : (OTHER[base] || lg.name || code);
+  return INFO[code] = {code, base, P, unit, shift, ord, von: lg.von || "", bis: lg.bis || "",
+    label: unit ? unit.name : (OTHER[base] || lg.name || code), kurz,
+    color: unit ? (KINDVAR[unit.typ] || "var(--OTH)") : "var(--OTH)"};
+}
+const mins = t => { const [h,m] = t.split(":").map(Number); return h*60 + m; };
+function span(i){ // Minuten ab Tagesbeginn, Ende ggf. > 1440 (über Mitternacht)
+  if (!i.von) return [0, 0];
+  const s = mins(i.von); let e = mins(i.bis); if (e <= s) e += 1440; return [s, e];
+}
+function buildIndex(){
+  BYDAY = {};
+  for (const p of D.personen) for (const [d, cs] of Object.entries(p.tage)) for (const c of cs)
+    (BYDAY[d] ??= []).push({p, code:c, i:info(c)});
+}
+function partnersOf(p, d, i){
+  return (BYDAY[d]||[]).filter(e => e.p !== p && i.unit && e.i.unit === i.unit && e.i.shift === i.shift)
+    .map(e => ({name:e.p.name, P:e.i.P}));
+}
+function eventsFor(name){
+  const p = D.personen.find(x => x.name === name); if (!p) return [];
+  const out = [];
+  for (const [d, cs] of Object.entries(p.tage)) for (const c of cs){
+    const i = info(c), [s, e] = span(i);
+    out.push({d:+d, i, s, e, p, partners: partnersOf(p, d, i)});
+  }
+  return out.sort((a,b) => a.d - b.d || a.s - b.s);
+}
+
+/* Besetzung eines Tages: pro Fahrzeug und Schicht */
+function staffing(d){
+  const wd = new Date(Y, M, d).getDay(), res = [];
+  for (const u of D.einheiten){
+    const shifts = {};
+    for (const c of u.codes){ const [sh, ord] = shiftOf(c); const lg = D.legende[c] || {};
+      shifts[sh] ??= {shift:sh, ord, von:lg.von||"", bis:lg.bis||"", crew:[]}; }
+    for (const e of (BYDAY[d]||[])) if (e.i.unit === u) shifts[e.i.shift].crew.push({name:e.p.name, P:e.i.P, i:e.i});
+    const list = [];
+    for (const s of Object.values(shifts)){
+      const need = (u.pflicht[s.shift] || []).includes(wd);
+      if (!need && !s.crew.length) continue;
+      const n = s.crew.filter(c => !c.P).length;
+      s.n = n; s.soll = u.soll;
+      s.status = u.soll === 0 ? "ok" : n === 0 ? "leer" : n < u.soll ? "unter" : "ok";
+      s.crew.sort((a,b) => a.P - b.P);
+      list.push(s);
+    }
+    list.sort((a,b) => a.ord - b.ord);
+    res.push({u, list});
+  }
+  return res;
+}
+const gaps = d => staffing(d).reduce((n, x) => n + x.list.filter(s => s.status !== "ok").length, 0);
+
+/* ---------- Wache ---------- */
+function isLive(d, s){
+  if (!s.von) return false;
+  const now = new Date(), [a, b] = span(s), st = new Date(Y, M, d, 0, a), en = new Date(Y, M, d, 0, b);
+  return now >= st && now < en;
+}
+function chip(c){
+  return `<button class="p ${me === c.name ? "me" : ""}" data-person="${esc(c.name)}">${esc(pretty(c.name))}${c.P ? '<span class="tag">Prakt.</span>' : ""}</button>`;
+}
+function todayDay(){ const n = new Date(); return (n.getFullYear()===Y && n.getMonth()===M) ? n.getDate() : null; }
+
+function renderWache(){
+  if (!D.personen.length){ $("summary").textContent = ""; $("strip").innerHTML = ""; return; }
+  const dt = new Date(Y, M, wDay), td = todayDay();
+  $("dname").textContent = `${WDL[dt.getDay()]}, ${pad(wDay)}.${pad(M+1)}.`;
+  $("dsub").textContent = wDay === td ? "Heute" : wDay === td + 1 ? "Morgen" : wDay === td - 1 ? "Gestern" : "";
+  $("prev").disabled = wDay <= 1; $("next").disabled = wDay >= NDAYS;
+  $("strip").innerHTML = Array.from({length:NDAYS}, (_,k) => {
+    const d = k+1, w = new Date(Y,M,d).getDay();
+    return `<button data-day="${d}" class="${d===wDay?"sel":""} ${w===0||w===6?"we":""}">${WD[w]}<b>${d}</b>${gaps(d) ? "<i></i>" : ""}</button>`;
+  }).join("");
+  const sel = $("strip").querySelector(".sel"); if (sel) sel.scrollIntoView({inline:"center", block:"nearest"});
+
+  const st = staffing(wDay), g = st.reduce((n,x) => n + x.list.filter(s => s.status !== "ok").length, 0);
+  $("summary").className = "summary " + (g ? "bad" : "ok");
+  $("summary").textContent = g ? `⚠︎ ${g} ${g === 1 ? "Schicht" : "Schichten"} nicht voll besetzt` : "✓ Alle Fahrzeuge voll besetzt";
+  let html = "";
+  for (const {u, list} of st){
+    if (!list.length) continue;
+    const bad = list.filter(s => s.status !== "ok").length;
+    html += `<div class="card" style="--c:${KINDVAR[u.typ]||"var(--OTH)"}"><h3><span>${esc(u.name)}</span>
+      ${bad ? `<span class="badge ${list.some(s=>s.status==="leer")?"leer":"unter"}">⚠︎ ${bad === 1 ? "Lücke" : bad + " Lücken"}</span>` : `<small>${esc(u.typ)}</small>`}</h3>`;
+    for (const s of list){
+      const badge = s.status === "leer" ? `<span class="badge leer">nicht besetzt</span>`
+                  : s.status === "unter" ? `<span class="badge unter">${s.n}/${s.soll} besetzt</span>` : "";
+      html += `<div class="shift ${s.status} ${isLive(wDay, s) ? "live" : ""}"><div class="t"><b>${s.shift}</b>${s.von}–${s.bis}</div>
+        <div class="crew">${s.crew.map(chip).join("")}${badge}</div></div>`;
+    }
+    html += `</div>`;
+  }
+  const other = {};
+  for (const e of (BYDAY[wDay]||[])) if (!e.i.unit) (other[e.i.label] ??= {i:e.i, crew:[]}).crew.push({name:e.p.name, P:false});
+  const ok = Object.keys(other).sort();
+  if (ok.length){
+    html += `<div class="sec">Außerdem</div><div class="card oth">`;
+    for (const k of ok) html += `<div class="shift"><div class="t"><b style="display:inline">${esc(k)}</b> · ${other[k].i.von}–${other[k].i.bis}</div><div class="crew">${other[k].crew.map(chip).join("")}</div></div>`;
+    html += `</div>`;
+  }
+  $("units").innerHTML = html;
+}
+
+/* ---------- Mein Kalender ---------- */
+const sameDay = (a, b) => a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const monday = d => addDays(d, -((d.getDay() + 6) % 7));
+const inPlan = d => d.getFullYear()===Y && d.getMonth()===M;
+const fmtSpan = (s, e) => `${pad(Math.floor(s/60)%24)}:${pad(s%60)}–${pad(Math.floor(e/60)%24)}:${pad(e%60)}`;
+
+function myEvents(){ return me ? eventsFor(me) : []; }
+function segmentsOn(date, evs){ // Teile von Schichten, die an 'date' liegen (Nachtdienste über Mitternacht aufgeteilt)
+  const out = [];
+  for (const ev of evs){
+    const base = new Date(Y, M, ev.d);
+    for (const [off, s0, e0] of [[0, ev.s, Math.min(ev.e, 1440)], [1, 0, ev.e - 1440]]){
+      if (e0 <= s0) continue;
+      if (sameDay(addDays(base, off), date)) out.push({ev, s:s0, e:e0, cont: off === 1});
+    }
+  }
+  return out;
+}
+
+function evTitle(ev){ return ev.i.unit ? `${ev.i.label} · ${ev.i.shift}` : ev.i.label; }
+function evPartners(ev){ return ev.partners.length ? "mit " + ev.partners.map(x => pretty(x.name) + (x.P ? " (Prakt.)" : "")).join(", ") : (ev.i.unit ? "noch allein eingeteilt" : ""); }
+
+function renderKal(){
+  if (!me){
+    $("cbody").innerHTML = `<div class="empty" style="padding-top:30px"><b style="color:var(--ink);font-size:18px">Wer bist du?</b><br>Such deinen Namen, damit dein Kalender angezeigt wird.</div>
+      <div class="search"><input id="q2" type="search" placeholder="Name suchen …" autocomplete="off"></div><div class="hits" id="hits2"></div>`;
+    $("cstrip").innerHTML = ""; $("ctitle").innerHTML = "Mein Kalender"; $("cexp").hidden = true; $("cwho").innerHTML = "";
+    $("q2").oninput = () => { const q = $("q2").value.trim().toLowerCase();
+      $("hits2").innerHTML = q ? D.personen.filter(p => p.name.toLowerCase().includes(q)).slice(0,8).map(p => `<button data-me="${esc(p.name)}">${esc(pretty(p.name))}</button>`).join("") : ""; };
+    return;
+  }
+  $("cexp").hidden = false;
+  $("cwho").innerHTML = `<span>Kalender von <b>${esc(pretty(me))}</b></span><button id="chg">ändern</button>`;
+  $("chg").onclick = () => { me = null; store.del("dp_me"); renderKal(); };
+  document.querySelectorAll("#seg button").forEach(b => b.classList.toggle("on", b.dataset.cv === cal.view));
+  const evs = myEvents(), d = cal.date, today = new Date();
+  if (cal.view === "monat"){
+    $("ctitle").innerHTML = `${MON[d.getMonth()]} <span>${d.getFullYear()}</span>`;
+    $("cstrip").innerHTML = "";
+    const first = new Date(d.getFullYear(), d.getMonth(), 1), start = monday(first);
+    let html = `<div class="mgrid">${["Mo","Di","Mi","Do","Fr","Sa","So"].map(w => `<div class="wd">${w}</div>`).join("")}`;
+    for (let k = 0; k < 42; k++){
+      const x = addDays(start, k);
+      if (k >= 35 && x.getMonth() !== d.getMonth()) break;
+      const segs = segmentsOn(x, evs).filter(s => !s.cont);
+      const cls = [x.getMonth() !== d.getMonth() ? "out" : "", sameDay(x, today) ? "today" : "", sameDay(x, d) ? "sel" : "", [0,6].includes(x.getDay()) ? "we" : ""].join(" ");
+      html += `<button class="mcell ${cls}" data-date="${+x}"><span class="n">${x.getDate()}</span>${segs.slice(0,3).map(s =>
+        `<span class="pill" style="--c:${s.ev.i.color}">${esc(s.ev.i.code)}</span>`).join("")}</button>`;
+    }
+    html += `</div><div class="daylist"><div class="sec" style="margin-top:6px">${WDL[d.getDay()]}, ${d.getDate()}. ${MON[d.getMonth()]}</div>${dayList(d, evs)}</div>`;
+    $("cbody").innerHTML = html;
+  } else if (cal.view === "woche"){
+    const mo = monday(d), su = addDays(mo, 6);
+    $("ctitle").innerHTML = mo.getMonth() === su.getMonth() ? `${MON[mo.getMonth()]} <span>${mo.getFullYear()}</span>`
+      : `${MON[mo.getMonth()].slice(0,3)}–${MON[su.getMonth()].slice(0,3)} <span>${su.getFullYear()}</span>`;
+    $("cstrip").innerHTML = `<div class="wkhead"><span></span>${[0,1,2,3,4,5,6].map(k => { const x = addDays(mo, k);
+      return `<button data-date="${+x}" class="${sameDay(x, today) ? "today" : ""}">${WD[x.getDay()]}<b>${x.getDate()}</b></button>`; }).join("")}</div>`;
+    $("cbody").innerHTML = `<div class="wk">${timeline(Array.from({length:7}, (_,k) => addDays(mo, k)), evs, 26, false)}</div>`;
+    scrollTl();
+  } else {
+    const mo = monday(d);
+    $("ctitle").innerHTML = `${WD[d.getDay()]}, ${d.getDate()}. ${MON[d.getMonth()].slice(0,3)}${MON[d.getMonth()].length > 4 ? "." : ""} <span>${d.getFullYear()}</span>`;
+    $("cstrip").innerHTML = `<div class="wstrip">${[0,1,2,3,4,5,6].map(k => { const x = addDays(mo, k);
+      const has = segmentsOn(x, evs).length;
+      return `<button data-date="${+x}" class="${sameDay(x, today) ? "today" : ""} ${sameDay(x, d) ? "sel" : ""}">${WD[x.getDay()].slice(0,2)}<b>${x.getDate()}</b><i class="${has ? "" : "no"}"></i></button>`; }).join("")}</div>`;
+    const segs = segmentsOn(d, evs);
+    $("cbody").innerHTML = `<div class="day">${timeline([d], evs, 46, true)}</div>${segs.length ? "" : `<div class="empty">Kein Dienst – frei 🙂</div>`}`;
+    scrollTl();
+  }
+}
+function dayList(d, evs){
+  const segs = segmentsOn(d, evs).filter(s => !s.cont);
+  const prevNight = segmentsOn(d, evs).filter(s => s.cont);
+  if (!segs.length && !prevNight.length) return `<div class="empty">Kein Dienst – frei 🙂</div>`;
+  return [...prevNight.map(s => evRow(s.ev, "bis " + fmtSpan(s.e, s.e).slice(0,5) + " (Nacht vom Vortag)")), ...segs.map(s => evRow(s.ev))].join("");
+}
+function evRow(ev, timeTxt){
+  return `<button class="ev" style="--c:${ev.i.color}" data-ev="${ev.d}|${esc(ev.i.code)}"><span class="bar"></span>
+    <span class="bd"><b>${esc(evTitle(ev))}${ev.i.P ? " (Prakt.)" : ""}</b><span>${esc(evPartners(ev))}</span></span>
+    <span class="tm">${timeTxt ? esc(timeTxt) : `${ev.i.von}<br>${ev.i.bis}`}</span></button>`;
+}
+function timeline(days, evs, H, detail){
+  const today = new Date();
+  let html = `<div class="tl" id="tl"><div class="grid" style="height:${24*H}px">`;
+  for (let h = 0; h <= 23; h++) html += `<div class="hr" style="top:${h*H}px"><span>${pad(h)}:00</span></div>`;
+  html += `<div class="cols" style="grid-template-columns:repeat(${days.length},1fr)">`;
+  for (const x of days){
+    html += `<div class="col ${days.length > 1 && sameDay(x, today) ? "today" : ""}">`;
+    for (const s of segmentsOn(x, evs)){
+      const top = s.s / 60 * H, hgt = Math.max((s.e - s.s) / 60 * H - 2, 16);
+      const ev = s.ev;
+      html += `<button class="blk" style="--c:${ev.i.color};top:${top}px;height:${hgt}px" data-ev="${ev.d}|${esc(ev.i.code)}">
+        <b>${esc(detail ? evTitle(ev) : ev.i.code)}</b>${detail ? `${fmtSpan(ev.s, ev.e)}${s.cont ? " (seit Vortag)" : ""}<br>${esc(evPartners(ev))}` : ""}</button>`;
+    }
+    if (sameDay(x, today)){ const m = today.getHours()*60 + today.getMinutes(); html += `<div class="now" style="top:${m/60*H}px"></div>`; }
+    html += `</div>`;
+  }
+  return html + `</div></div></div>`;
+}
+function scrollTl(){
+  const tl = $("tl"); if (!tl) return;
+  const H = tl.querySelector(".hr:nth-child(2)").offsetTop;
+  const first = [...tl.querySelectorAll(".blk")].map(b => b.offsetTop).sort((a,b) => a-b)[0];
+  const off = document.querySelector("header").offsetHeight + document.querySelector(".calhead").offsetHeight + 8;
+  const y = tl.getBoundingClientRect().top + window.scrollY + Math.max(0, (first ?? 6*H) - H/2) - off;
+  window.scrollTo({top: Math.max(0, y)});
+}
+function calShift(dir){
+  const d = cal.date;
+  cal.date = cal.view === "monat" ? new Date(d.getFullYear(), d.getMonth() + dir, 1)
+           : addDays(d, cal.view === "woche" ? 7*dir : dir);
+  renderKal();
+}
+
+function showEvent(key){
+  const [d, code] = key.split("|"); const p = D.personen.find(x => x.name === me) || null;
+  const owner = D.personen.find(x => (x.tage[d]||[]).includes(code) && (!p || x === p)) || p;
+  const ev = eventsFor(owner.name).find(e => e.d === +d && e.i.code === code);
+  const dt = new Date(Y, M, ev.d);
+  const lg = D.legende[ev.i.base] || D.legende[code] || {};
+  openSheet(`<h3>${esc(ev.i.label)}</h3><div class="sub">${ev.i.unit ? esc(SHIFTNAME[ev.i.shift]) : esc(lg.name || "")}${ev.i.P ? " · Praktikant" : ""}</div>
+    <dl><dt>Datum</dt><dd>${WDL[dt.getDay()]}, ${dt.getDate()}. ${MON[M]} ${Y}</dd>
+    <dt>Uhrzeit</dt><dd>${ev.i.von}–${ev.i.bis}${ev.e > 1440 ? " (+1 Tag)" : ""}</dd>
+    ${ev.i.unit ? `<dt>Fahrzeug</dt><dd>${esc(ev.i.label)} (${esc(ev.i.unit.typ)})</dd>` : ""}
+    ${ev.i.unit ? `<dt>Mitfahrer</dt><dd>${ev.partners.length ? `<div class="crew">${ev.partners.map(chip).join("")}</div>` : "noch niemand"}</dd>` : ""}
+    <dt>Kürzel</dt><dd>${esc(code)}</dd></dl>
+    <button class="btn alt" id="goW">Ganze Wache an diesem Tag</button>`);
+  $("goW").onclick = () => { closeSheet(); wDay = ev.d; show("wache"); };
+}
+function openSheet(html){ $("sheet").innerHTML = `<div class="grab"></div>` + html; $("scrim").hidden = false; }
+function closeSheet(){ $("scrim").hidden = true; }
+
+/* Kalender-Datei wird NUR hier auf dem Gerät erzeugt – auf dem Server liegt nichts Lesbares. */
+function icsFor(name){
+  const enc = new TextEncoder();
+  const fold = line => { const out = []; let cur = "", n = 0;
+    for (const ch of line){ const b = enc.encode(ch).length; if (n + b > (out.length ? 74 : 75)){ out.push(cur); cur = ""; n = 0; } cur += ch; n += b; }
+    out.push(cur); return out.join("\r\n "); };
+  const e = t => String(t).replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  const dt = (d, m) => { const x = new Date(Y, M, d, 0, m); return `${x.getFullYear()}${pad(x.getMonth()+1)}${pad(x.getDate())}T${pad(x.getHours())}${pad(x.getMinutes())}00`; };
+  const now = new Date().toISOString().replace(/[-:]/g, "").slice(0,15) + "Z";
+  const L = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//RW18 Dienstplan//DE","CALSCALE:GREGORIAN","METHOD:PUBLISH",
+    "X-WR-CALNAME:Dienst RW 18","X-WR-TIMEZONE:Europe/Berlin",
+    "BEGIN:VTIMEZONE","TZID:Europe/Berlin",
+    "BEGIN:DAYLIGHT","TZOFFSETFROM:+0100","TZOFFSETTO:+0200","TZNAME:CEST","DTSTART:19700329T020000","RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU","END:DAYLIGHT",
+    "BEGIN:STANDARD","TZOFFSETFROM:+0200","TZOFFSETTO:+0100","TZNAME:CET","DTSTART:19701025T030000","RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU","END:STANDARD",
+    "END:VTIMEZONE"];
+  let n = 0;
+  for (const ev of eventsFor(name)){
+    if (!ev.i.von) continue;
+    const mates = ev.partners.map(x => pretty(x.name) + (x.P ? " (Prakt.)" : "")).join(", ");
+    const desc = ev.i.unit ? `Mitfahrer: ${mates || "noch niemand"}\nStand: ${D.meta.stand}` : `${ev.i.label}\nStand: ${D.meta.stand}`;
+    L.push("BEGIN:VEVENT", `UID:${Y}${pad(M+1)}${pad(ev.d)}-${ev.i.code}@dienstplan-rw18`, `DTSTAMP:${now}`,
+      `DTSTART;TZID=Europe/Berlin:${dt(ev.d, ev.s)}`, `DTEND;TZID=Europe/Berlin:${dt(ev.d, ev.e)}`,
+      `SUMMARY:${e(ev.i.code)}`, `DESCRIPTION:${e(desc)}`, "LOCATION:Rettungswache 18", "END:VEVENT");
+    n++;
+  }
+  L.push("END:VCALENDAR");
+  return {text: L.map(fold).join("\r\n") + "\r\n", n};
+}
+function exportSheet(){
+  const {text, n} = icsFor(me);
+  const file = `Dienste-${MON[M]}-${Y}.ics`;
+  const url = URL.createObjectURL(new Blob([text], {type:"text/calendar;charset=utf-8"}));
+  openSheet(`<h3>In den Kalender übernehmen</h3>
+    <p>${n} Dienste im ${MON[M]} ${Y} – mit Uhrzeit, Kürzel (z. B. 81T) und Mitfahrern.</p>
+    <a class="btn" href="${url}" download="${file}">📅 Kalenderdatei öffnen</a>
+    <p>Auf dem iPhone danach „Alle hinzufügen“ antippen. <b>Tipp:</b> Leg dafür in der Kalender-App einen eigenen Kalender „Dienst RW 18“ an und wähle ihn beim Hinzufügen aus. Ändert sich der Plan, löschst du diesen Kalender und importierst neu – so entstehen keine doppelten Termine.</p>
+    <p><b>Datenschutz:</b> Die Datei wird nur auf deinem Gerät erzeugt. Im Kalender landen auch die Namen deiner Mitfahrer – nutze dafür nur deinen eigenen Kalender und teile ihn nicht.</p>`);
+}
+function privacySheet(){
+  openSheet(`<h3>Datenschutz</h3>
+    <p><b>Zweck:</b> Einsicht in den Dienstplan der RW 18 – nur für Mitarbeitende, die ihn auch in CareMan sehen dürfen.</p>
+    <p><b>Welche Daten:</b> Namen, Dienstzeiten und Fahrzeugzuordnung des aktuellen Monats aus CareMan. Keine Urlaube, keine Fehlzeitengründe, keine Kontaktdaten.</p>
+    <p><b>Zugang:</b> Jede Person hat einen eigenen Benutzernamen und ein selbst gewähltes Passwort. Neue Zugänge werden erst nach Freigabe durch den Administrator aktiv; Zugänge können jederzeit gesperrt oder gelöscht werden.</p>
+    <p><b>Wie geschützt:</b> Passwörter werden schon auf deinem Gerät mit PBKDF2 umgewandelt und auf dem Server nur als gesalzener Hash gespeichert – niemand kann sie auslesen. Übertragung nur per HTTPS. Nach 8 Fehlversuchen wird ein Konto 15 Minuten gesperrt. Kein Tracking, keine Werbe-Cookies, keine Statistik.</p>
+    <p><b>Wo gespeichert:</b> Dienstplan und Benutzerkonten (Benutzername, Name, Passwort-Hash, Zeitpunkt der letzten Anmeldung) liegen bei Cloudflare. Der Abruf aus CareMan läuft kurzzeitig über GitHub; dort wird nichts dauerhaft gespeichert.</p>
+    <p><b>Auf deinem Gerät gespeichert:</b> ein Anmelde-Schlüssel (bei „Angemeldet bleiben“ 30 Tage, sonst 12 Stunden), dein gewählter Name und die Ansicht. „Abmelden“ löscht alles davon.</p>
+    <p><b>Aktualisierung:</b> nur manuell über den Knopf „Aktualisieren“, nicht automatisch.</p>
+    <p><b>Regeln:</b> Zugangsdaten nicht weitergeben, keine Screenshots in Gruppen teilen, auf fremden Geräten abmelden.</p>
+    <p>Fragen, Löschung deines Zugangs oder Wunsch, nicht angezeigt zu werden: an die Wachenleitung bzw. den Betreiber dieser Seite wenden.</p>
+    <button class="btn alt" onclick="closeSheet()">Schließen</button>`);
+}
+
+/* ---------- Personen ---------- */
+function renderPerson(name){
+  const p = D.personen.find(x => x.name === name);
+  if (!p){ $("pview").innerHTML = `<div class="empty">Name suchen oder in der Wache auf eine Person tippen.</div>`; return; }
+  const td = todayDay() ?? (new Date() > new Date(Y, M, NDAYS) ? 99 : 0);
+  const rows = eventsFor(name);
+  const fahr = rows.filter(r => r.i.unit), nights = rows.filter(r => r.i.shift === "Nacht").length;
+  let html = `<div class="ph"><h2>${esc(pretty(p.name))}</h2><button class="star ${me===p.name?"on":""}" id="star">${me===p.name?"★ Das bin ich":"☆ Das bin ich"}</button></div>
+    <div class="stats"><div><b>${fahr.length}</b><span>Fahrdienste</span></div><div><b>${nights}</b><span>Nächte</span></div><div><b>${fahr.filter(r => r.d >= td).length}</b><span>noch offen</span></div></div>`;
+  for (const r of rows){
+    const dt = new Date(Y, M, r.d);
+    html += `<div class="row ${r.d < td ? "past" : ""}" style="--c:${r.i.color}"><div class="dt">${WD[dt.getDay()]}<b>${pad(r.d)}.${pad(M+1)}.</b></div>
+      <div class="u"><b>${esc(evTitle(r))}${r.i.P ? " (Prakt.)" : ""}</b><span>${esc(evPartners(r) || r.i.code)}</span></div>
+      <div class="tm">${r.i.von}<br>${r.i.bis}</div></div>`;
+  }
+  $("pview").innerHTML = html;
+  $("star").onclick = () => { setMe(me === p.name ? null : p.name); renderPerson(p.name); };
+}
+function setMe(n){ me = n; n ? store.set("dp_me", n) : store.del("dp_me"); }
+
+/* ---------- Aktualisieren ---------- */
+let toastT;
+function toast(msg, ms = 3500){ $("toast").textContent = msg; $("toast").hidden = false; clearTimeout(toastT); if (ms) toastT = setTimeout(() => $("toast").hidden = true, ms); }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function refresh(){
+  const btn = $("rf");
+  if (btn.classList.contains("spin")) return;
+  btn.classList.add("spin");
+  try {
+    const r = await api("/api/refresh", {method:"POST"});
+    if (!r.ok) throw new Error(r.j.error || "Start fehlgeschlagen.");
+    const since = r.j.since, before = UPDATED;
+    toast("Aktualisierung läuft … (ca. 2–3 Minuten)", 0);
+    for (let k = 0; k < 60; k++){
+      await sleep(8000);
+      const s = await api("/api/status?since=" + since);
+      if (!s.ok) continue;
+      if (s.j.updated > before){ toast("Neuer Stand geladen ✓"); return setTimeout(() => location.reload(), 600); }
+      if (s.j.run && s.j.run.status === "completed" && s.j.run.conclusion !== "success") throw new Error("Abholen bei CareMan ist fehlgeschlagen.");
+      if (s.j.run) toast(s.j.run.status === "in_progress" ? "Dienstplan wird bei CareMan abgeholt …" : "In der Warteschlange …", 0);
+    }
+    throw new Error("Dauert ungewöhnlich lange – später nochmal öffnen.");
+  } catch(e){ toast(e.message || "Fehler beim Aktualisieren", 6000); }
+  finally { btn.classList.remove("spin"); }
+}
+
+/* ---------- Konto ---------- */
+const sess = {
+  get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},
+  set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}},
+};
+let TOKEN = store.get("dp_t") || sess.get("dp_t"), USER = null, UPDATED = 0;
+async function api(path, opt = {}){
+  const r = await fetch(path, {...opt, headers:{"content-type":"application/json", ...(TOKEN ? {authorization:"Bearer " + TOKEN} : {}), ...(opt.headers || {})}, cache:"no-store"});
+  let j = {}; try { j = await r.json(); } catch(e){}
+  if (r.status === 401 && TOKEN && !path.startsWith("/api/login")) clearLocal();
+  return {ok:r.ok, status:r.status, j};
+}
+async function pwKey(u, pw){ // Passwort verlässt das Gerät nie im Klartext
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({name:"PBKDF2", salt:new TextEncoder().encode("rw18|" + u), iterations:200000, hash:"SHA-256"}, k, 256);
+  return btoa(String.fromCharCode(...new Uint8Array(bits))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function clearLocal(){
+  TOKEN = null;
+  try { Object.keys(localStorage).filter(k => k.startsWith("dp_") && k !== "dp_tour").forEach(k => localStorage.removeItem(k)); sessionStorage.clear(); } catch(e){}
+}
+function showLock(msg){ $("app").hidden = true; $("lock").hidden = false; if (msg) $("err").textContent = msg; }
+let amode = "login";
+function setMode(m){
+  amode = m;
+  document.querySelectorAll("#aseg button").forEach(b => b.classList.toggle("on", b.dataset.a === m));
+  $("an").hidden = $("ap2").hidden = $("ahint").hidden = m !== "reg";
+  $("akeep").hidden = m === "reg";
+  $("ap").autocomplete = m === "reg" ? "new-password" : "current-password";
+  $("abtn").textContent = m === "reg" ? "Zugang anfragen" : "Anmelden";
+  $("asub").textContent = m === "reg" ? "Neuen Zugang anfragen." : "Bitte melde dich an.";
+  $("err").textContent = "";
+}
+$("aseg").onclick = e => { const b = e.target.closest("[data-a]"); if (b) setMode(b.dataset.a); };
+$("lf").onsubmit = async e => {
+  e.preventDefault(); $("err").textContent = ""; $("amsg").innerHTML = "";
+  const u = $("au").value.trim().toLowerCase(), pw = $("ap").value;
+  const btn = $("abtn"); btn.disabled = true;
+  try {
+    if (amode === "reg"){
+      if (!/^[a-z0-9._-]{3,30}$/.test(u)) throw new Error("Benutzername: 3–30 Zeichen, nur Buchstaben, Zahlen, Punkt, Minus, Unterstrich.");
+      if ($("an").value.trim().length < 3) throw new Error("Bitte Vor- und Nachname angeben.");
+      if (pw.length < 10) throw new Error("Das Passwort muss mindestens 10 Zeichen lang sein.");
+      if (pw !== $("ap2").value) throw new Error("Die Passwörter stimmen nicht überein.");
+      btn.textContent = "Sende …";
+      const r = await api("/api/register", {method:"POST", body: JSON.stringify({u, name:$("an").value.trim(), pw: await pwKey(u, pw)})});
+      if (!r.ok) throw new Error(r.j.error || "Registrierung fehlgeschlagen.");
+      if (r.j.status === "active"){ setMode("login"); $("au").value = u; $("ap").value = pw; return $("lf").requestSubmit(); }
+      setMode("login"); $("au").value = u; $("ap").value = ""; $("an").value = ""; $("ap2").value = "";
+      $("amsg").innerHTML = `<div class="okmsg">✓ <b>Anfrage gesendet.</b> Sobald dein Zugang freigegeben ist, kannst du dich hier mit deinem Benutzernamen und Passwort anmelden.</div>`;
+    } else {
+      btn.textContent = "Prüfe …";
+      const r = await api("/api/login", {method:"POST", body: JSON.stringify({u, pw: await pwKey(u, pw), keep: $("keep").checked})});
+      if (!r.ok) throw new Error(r.j.error || "Anmeldung fehlgeschlagen.");
+      TOKEN = r.j.token;
+      ($("keep").checked ? store : sess).set("dp_t", TOKEN);
+      $("ap").value = "";
+      await loadApp();
+    }
+  } catch(err){ $("err").textContent = err.message; }
+  finally { btn.disabled = false; btn.textContent = amode === "reg" ? "Zugang anfragen" : "Anmelden"; }
+};
+async function loadApp(){
+  const r = await api("/api/plan");
+  if (!r.ok){ showLock(r.status === 401 ? "" : (r.j.error || "Server nicht erreichbar.")); return; }
+  USER = r.j.user; UPDATED = r.j.updated || 0;
+  const now = new Date();
+  const plan = r.j.plan || {meta:{von:`01.${pad(now.getMonth()+1)}.${now.getFullYear()}`, stand:"noch nie"}, personen:[], legende:{}, einheiten:[]};
+  if (!me && USER.name){
+    const n = USER.name.toLowerCase().replace(/\s+/g, " ");
+    const hit = plan.personen.find(p => pretty(p.name).toLowerCase() === n || p.name.toLowerCase() === n);
+    if (hit) setMe(hit.name);
+  }
+  start(plan);
+}
+function adminSheet(){
+  openSheet(`<h3>Benutzer verwalten</h3><div class="sub">Neue Anfragen stehen oben.</div><div class="ulist" id="ul">Lade …</div>`);
+  const fmt = t => t ? new Date(t).toLocaleDateString("de-DE") : "–";
+  const load = async () => {
+    const r = await api("/api/admin/users");
+    if (!r.ok){ $("ul").textContent = r.j.error || "Fehler"; return; }
+    $("ul").innerHTML = r.j.users.map(x => {
+      const st = x.status === "pending" ? '<span class="st-pending">wartet auf Freigabe</span>' : x.status === "blocked" ? '<span class="st-blocked">gesperrt</span>' : `zuletzt: ${fmt(x.last_login)}`;
+      const own = x.u === USER.u;
+      const btns = own ? "<span>(du)</span>" : [
+        x.status !== "active" ? `<button class="g" data-ua="approve" data-u="${esc(x.u)}">Freigeben</button>` : `<button data-ua="block" data-u="${esc(x.u)}">Sperren</button>`,
+        `<button class="r" data-ua="delete" data-u="${esc(x.u)}">Löschen</button>`].join("");
+      return `<div class="ur"><div><b>${esc(x.name)}</b><span>${esc(x.u)} · ${st}</span></div>${btns}</div>`;
+    }).join("") || "Noch keine Benutzer.";
+  };
+  $("ul").onclick = async e => {
+    const b = e.target.closest("[data-ua]"); if (!b) return;
+    if (b.dataset.ua === "delete" && !confirm(`Benutzer „${b.dataset.u}“ wirklich löschen?`)) return;
+    const r = await api("/api/admin/user", {method:"POST", body: JSON.stringify({u:b.dataset.u, action:b.dataset.ua})});
+    if (!r.ok) toast(r.j.error || "Fehler"); load();
+  };
+  load();
+}
+function pwSheet(){
+  openSheet(`<h3>Passwort ändern</h3><div class="sub">Danach wirst du auf allen anderen Geräten abgemeldet.</div>
+    <input id="po" type="password" placeholder="Aktuelles Passwort" autocomplete="current-password">
+    <input id="pn" type="password" placeholder="Neues Passwort (mind. 10 Zeichen)" autocomplete="new-password">
+    <input id="pn2" type="password" placeholder="Neues Passwort wiederholen" autocomplete="new-password">
+    <div class="err" id="perr"></div><button class="btn" id="pgo">Speichern</button>`);
+  $("pgo").onclick = async () => {
+    const n = $("pn").value;
+    if (n.length < 10) return $("perr").textContent = "Mindestens 10 Zeichen.";
+    if (n !== $("pn2").value) return $("perr").textContent = "Die Passwörter stimmen nicht überein.";
+    const r = await api("/api/password", {method:"POST", body: JSON.stringify({old: await pwKey(USER.u, $("po").value), pw: await pwKey(USER.u, n)})});
+    if (!r.ok) return $("perr").textContent = r.j.error || "Fehler";
+    closeSheet(); toast("Passwort geändert ✓");
+  };
+}
+
+/* ---------- Tutorial ---------- */
+const isStandalone = () => window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+function tourSteps(){
+  const st = [
+    {title:"Willkommen! 👋", text:"Das ist der Dienstplan der RW 18 – direkt aus CareMan. Ich zeige dir in einer Minute, was die Seite kann.", view:"wache"},
+    {sel:"#rf", title:"Aktualisieren", text:"Der Plan wird nicht automatisch geholt. Tippe hier, um den aktuellen Stand aus CareMan zu laden – nach 2–3 Minuten ist er da. Wann zuletzt aktualisiert wurde, steht links daneben.", view:"wache"},
+    {sel:"#strip", title:"Tag auswählen", text:"Tippe auf einen Tag – oder wische auf der Seite nach links/rechts. Ein oranger Punkt heißt: An diesem Tag ist mindestens ein Fahrzeug nicht voll besetzt.", view:"wache"},
+    {sel:"#units .card", title:"Wer fährt was?", text:"Pro Fahrzeug siehst du Tag- und Nachtdienst mit Besatzung. „● jetzt“ markiert die laufende Schicht. Orange = nur teilweise besetzt, rot = gar nicht besetzt. Praktikanten zählen nicht mit.", view:"wache"},
+    {sel:"#units .p", title:"Auf Namen tippen", text:"Tippe auf einen Namen, um alle Dienste dieser Person im Monat zu sehen.", view:"wache"},
+    {sel:"nav [data-v=kal]", title:"Dein eigener Kalender", text:"Hier findest du nur deine Dienste – wie im Apple-Kalender.", view:"wache"},
+  ];
+  if (me) st.push(
+    {sel:"#seg", title:"Tag · Woche · Monat", text:"Wechsle zwischen den Ansichten. Im Monat stehen die Kürzel (z. B. 81T, 83N). Tippe auf einen Dienst für Uhrzeit und Mitfahrer.", view:"kal"},
+    {sel:"#cexp", title:"Ab in den iPhone-Kalender", text:"Übernimmt deine Dienste des Monats mit Uhrzeit, Kürzel und Mitfahrern in den iPhone-Kalender. Die Datei wird nur auf deinem Gerät erzeugt.", view:"kal"});
+  else st.push(
+    {sel:"#q2", title:"Wer bist du?", text:"Gib hier nach dem Tutorial deinen Namen ein. Danach siehst du deine Dienste als Tag-, Wochen- und Monatsansicht und kannst sie in den iPhone-Kalender übernehmen.", view:"kal"});
+  st.push({sel:"nav [data-v=pers]", title:"Personen", text:"Hier kannst du jede Person suchen. Mit „Das bin ich“ legst du fest, wessen Kalender du unter „Mein Kalender“ siehst.", view:"wache"});
+  if (!isStandalone()) st.push({title:"Tipp: Als App speichern 📱", text:"In Safari unten auf Teilen (□↑) tippen und „Zum Home-Bildschirm“ wählen. Dann hast du den Dienstplan wie eine App – mit eigenem Symbol.", view:"wache"});
+  st.push({title:"Fertig! ✅", text:"Das war's. Bitte gib deine Zugangsdaten nicht weiter – mehr dazu unten unter „Datenschutz“. Dort kannst du das Tutorial auch jederzeit nochmal starten.", view:"wache"});
+  return st;
+}
+let tourI = 0, tourS = [];
+function startTour(){ tourS = tourSteps(); tourI = 0; $("tour").hidden = false; tourShow(); }
+function endTour(){ $("tour").hidden = true; store.set("dp_tour", "1"); show("wache"); }
+function tourShow(){
+  const s = tourS[tourI];
+  if (s.view && !document.querySelector(`nav [data-v=${s.view}]`).classList.contains("on")) show(s.view);
+  const el = s.sel ? document.querySelector(s.sel) : null;
+  const hl = $("tourHl"), tip = $("tourTip");
+  tip.innerHTML = `<div class="dots">${tourS.map((_,k) => `<i class="${k===tourI?"on":""}"></i>`).join("")}</div>
+    <h4>${s.title}</h4><p>${s.text}</p>
+    <div class="bt">${tourI < tourS.length-1 ? '<button class="sk" id="tSk">Überspringen</button>' : '<span class="sk"></span>'}
+      ${tourI ? '<button class="bk" id="tBk">Zurück</button>' : ""}
+      <button class="nx" id="tNx">${tourI === tourS.length-1 ? "Los geht's" : tourI === 0 ? "Tour starten" : "Weiter"}</button></div>`;
+  $("tNx").onclick = () => { if (tourI < tourS.length-1){ tourI++; tourShow(); } else endTour(); };
+  if ($("tBk")) $("tBk").onclick = () => { tourI--; tourShow(); };
+  if ($("tSk")) $("tSk").onclick = endTour;
+  const place = () => {
+    if (!el){ hl.className = "hl none"; tip.style.top = Math.max(80, innerHeight/2 - tip.offsetHeight/2) + "px"; return; }
+    const r = el.getBoundingClientRect(), pad = 6;
+    hl.className = "hl";
+    Object.assign(hl.style, {left:(r.left-pad)+"px", top:(r.top-pad)+"px", width:(r.width+2*pad)+"px", height:(r.height+2*pad)+"px"});
+    const below = r.bottom + pad + 12, th = tip.offsetHeight;
+    tip.style.top = (below + th < innerHeight - 10 ? below : Math.max(10, r.top - pad - 12 - th)) + "px";
+  };
+  if (el && getComputedStyle(el.closest("nav") || el).position !== "fixed" && !el.closest("header")){
+    const r = el.getBoundingClientRect();
+    if (r.top < 120 || r.bottom > innerHeight - 260) window.scrollTo({top: window.scrollY + r.top - 140});
+  }
+  requestAnimationFrame(() => requestAnimationFrame(place));
+  setTimeout(place, 350);
+}
+addEventListener("resize", () => { if (!$("tour").hidden) tourShow(); });
+
+/* ---------- Ablauf ---------- */
+function show(v){
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  $("v-wache").hidden = v !== "wache"; $("v-kal").hidden = v !== "kal"; $("v-pers").hidden = v !== "pers";
+  store.set("dp_tab", v);
+  window.scrollTo(0,0);
+  if (v === "wache") renderWache();
+  if (v === "kal") renderKal();
+  if (v === "pers") renderPerson(me);
+}
+
+function start(data){
+  D = data; buildIndex();
+  const [, mm, yy] = D.meta.von.split(".").map(Number);
+  Y = yy; M = mm-1; NDAYS = new Date(Y, M+1, 0).getDate();
+  wDay = todayDay() ?? 1;
+  cal.date = todayDay() ? new Date(Y, M, todayDay()) : new Date(Y, M, 1);
+  $("stand").textContent = "Stand " + D.meta.stand; $("stand2").textContent = D.meta.stand;
+  $("lock").hidden = true; $("app").hidden = false;
+  if (!D.personen.length){ $("units").innerHTML = `<div class="empty">Noch kein Dienstplan geladen.<br>Tippe oben auf <b>Aktualisieren</b>.</div>`; }
+
+  $("prev").onclick = () => { if (wDay > 1){ wDay--; renderWache(); } };
+  $("next").onclick = () => { if (wDay < NDAYS){ wDay++; renderWache(); } };
+  $("strip").onclick = e => { const b = e.target.closest("[data-day]"); if (b){ wDay = +b.dataset.day; renderWache(); } };
+  let sx = null;
+  $("units").addEventListener("touchstart", e => sx = e.touches[0].clientX, {passive:true});
+  $("units").addEventListener("touchend", e => { if (sx === null) return; const dx = e.changedTouches[0].clientX - sx; sx = null;
+    if (Math.abs(dx) > 70){ if (dx < 0 && wDay < NDAYS) wDay++; else if (dx > 0 && wDay > 1) wDay--; renderWache(); } });
+
+  $("seg").onclick = e => { const b = e.target.closest("[data-cv]"); if (b){ cal.view = b.dataset.cv; store.set("dp_cv", cal.view); renderKal(); } };
+  $("cprev").onclick = () => calShift(-1); $("cnext").onclick = () => calShift(1);
+  $("ctoday").onclick = () => { cal.date = new Date(); renderKal(); };
+  let cx = null;
+  $("cbody").addEventListener("touchstart", e => cx = e.touches[0].clientX, {passive:true});
+  $("cbody").addEventListener("touchend", e => { if (cx === null) return; const dx = e.changedTouches[0].clientX - cx; cx = null; if (Math.abs(dx) > 70) calShift(dx < 0 ? 1 : -1); });
+  $("xdl").onclick = exportSheet;
+
+  document.addEventListener("click", e => {
+    const dd = e.target.closest("[data-date]");
+    if (dd && dd.closest("#v-kal")){ const x = new Date(+dd.dataset.date);
+      if (cal.view === "monat" && sameDay(x, cal.date)) cal.view = "tag";
+      else if (cal.view === "woche") cal.view = "tag";
+      cal.date = x; store.set("dp_cv", cal.view); renderKal(); return; }
+    const ev = e.target.closest("[data-ev]"); if (ev){ showEvent(ev.dataset.ev); return; }
+    const pm = e.target.closest("[data-me]"); if (pm){ setMe(pm.dataset.me); renderKal(); return; }
+    const pp = e.target.closest("[data-person]"); if (pp){ closeSheet(); show("pers"); $("q").value = ""; $("hits").innerHTML = ""; renderPerson(pp.dataset.person); }
+  });
+  $("scrim").onclick = e => { if (e.target === $("scrim")) closeSheet(); };
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
+  $("q").oninput = () => {
+    const q = $("q").value.trim().toLowerCase();
+    $("hits").innerHTML = q ? D.personen.filter(p => p.name.toLowerCase().includes(q)).slice(0,8)
+      .map(p => `<button data-pick="${esc(p.name)}">${esc(pretty(p.name))}</button>`).join("") : "";
+  };
+  $("hits").onclick = e => { const b = e.target.closest("[data-pick]"); if (b){ $("hits").innerHTML = ""; $("q").value = ""; renderPerson(b.dataset.pick); } };
+  $("rf").onclick = refresh;
+  $("logout").onclick = async () => { try { await api("/api/logout", {method:"POST"}); } catch(e){} clearLocal(); location.replace(location.pathname); };
+  $("whoami").textContent = USER.name + " (" + USER.u + ")";
+  $("admin").hidden = $("adminSep").hidden = !USER.admin;
+  $("admin").onclick = adminSheet; $("pwchg").onclick = pwSheet;
+  $("privacy").onclick = privacySheet;
+  $("tourAgain").onclick = startTour;
+  show(store.get("dp_tab") || "wache");
+  if (!store.get("dp_tour")) setTimeout(startTour, 500);
+
+}
+
+if (TOKEN) loadApp(); else showLock();
+</script>
+</body>
+</html>
