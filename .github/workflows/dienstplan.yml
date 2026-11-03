@@ -1,30 +1,54 @@
 name: Dienstplan aktualisieren
 
+# 1) Wenn du Dateien im Projekt änderst (Push): Server bei Cloudflare neu einrichten.
+# 2) Wenn jemand auf der Website auf "Aktualisieren" tippt: Dienstplan aus CareMan holen
+#    und an den Server schicken. Es gibt KEINEN Zeitplan.
 on:
-  schedule:
-    - cron: "7 4-22/2 * * *"
+  push:
+    branches: [main, master]
   workflow_dispatch:
     inputs:
-      debug:
-        description: "Fehlersuche: Screenshots der Klick-Schritte speichern"
-        type: boolean
-        default: false
+      ziel:
+        description: "Adresse der Website (leer lassen = Secret WORKER_URL)"
+        required: false
+        default: ""
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
-  group: dienstplan
+  group: dienstplan-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
-  update:
+  server:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Server bei Cloudflare einrichten
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          secrets: |
+            APP_SECRET
+            RESEND_API_KEY
+            ADMIN_EMAIL
+            ADMIN_USERNAME
+            GH_TOKEN
+            GH_REPO
+        env:
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+          GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+  update:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -44,43 +68,17 @@ jobs:
           CAREMAN_USER: ${{ secrets.CAREMAN_USER }}
           CAREMAN_PASSWORD: ${{ secrets.CAREMAN_PASSWORD }}
           PLANUNGSGRUPPE: RW 18
-          DEBUG: ${{ inputs.debug && '1' || '0' }}
         run: python fetch_pdf.py dienstplan.pdf
 
       - name: PDF auswerten
         run: python parse_dienstplan.py dienstplan.pdf data.json
 
-      - name: Website bauen (verschlüsselt)
+      - name: Dienstplan an den Server schicken
         env:
-          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
-          DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
-        run: |
-          mkdir -p site
-          python build_site.py data.json site/index.html
-          rm -f dienstplan.pdf data.json
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          ZIEL: ${{ inputs.ziel != '' && inputs.ziel || secrets.WORKER_URL }}
+        run: python upload_plan.py data.json "$ZIEL"
 
-      - name: Screenshots zur Fehlersuche hochladen
-        if: always() && (failure() || inputs.debug)
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-screenshots
-          path: debug/
-          retention-days: 1
-          if-no-files-found: ignore
-
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-      - id: deploy
-        uses: actions/deploy-pages@v4
-
-      - name: Zeitplan aktiv halten
-        run: |
-          last=$(git log -1 --format=%ct)
-          if [ $(( $(date +%s) - last )) -gt 2592000 ]; then
-            git config user.name "dienstplan-bot"
-            git config user.email "dienstplan-bot@users.noreply.github.com"
-            git commit --allow-empty -m "Zeitplan aktiv halten"
-            git push
-          fi
+      - name: Daten auf dem GitHub-Rechner sofort löschen
+        if: always()
+        run: rm -rf dienstplan.pdf data.json debug
