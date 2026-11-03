@@ -2,7 +2,7 @@ name: Dienstplan aktualisieren
 
 on:
   schedule:
-    - cron: "7 4-22/2 * * *"   # alle 2 Stunden zwischen ca. 5 und 23 Uhr (Zeiten in UTC)
+    - cron: "7 4-22/2 * * *"
   workflow_dispatch:
     inputs:
       debug:
@@ -53,7 +53,7 @@ jobs:
       - name: Website bauen (verschlüsselt)
         env:
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
-                       DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+          DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
         run: |
           mkdir -p site
           python build_site.py data.json site/index.html
@@ -75,8 +75,6 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
 
-      # GitHub schaltet Zeitpläne nach 60 Tagen ohne Änderung im Repository ab.
-      # Dieser Schritt macht deshalb höchstens einmal im Monat einen leeren Commit.
       - name: Zeitplan aktiv halten
         run: |
           last=$(git log -1 --format=%ct)
