@@ -107,17 +107,13 @@ def person_ics(data, person, year, month, stamp):
             if en <= st:
                 en += timedelta(days=1)
             u = i["unit"]
+            summary = c                       # Titel = Kürzel aus dem Plan, z. B. 81T oder 83NP
             if u:
                 mates = [(p, j) for p, j in by_day.get(d, []) if p is not person and j["unit"] is u and j["shift"] == i["shift"]]
                 mate_txt = ", ".join(pretty(p["name"]) + (" (Prakt.)" if j["P"] else "") for p, j in mates) or "noch niemand"
-                summary = f"{EMOJI.get(u['typ'], '')} {u['name']} · {SHIFTNAME[i['shift']]}".strip()
-                if i["P"]:
-                    summary += " (Prakt.)"
-                desc = (f"Fahrzeug: {u['name']} ({u['typ']})\nSchicht: {SHIFTNAME[i['shift']]} {i['von']}–{i['bis']}\n"
-                        f"Mitfahrer: {mate_txt}\nKürzel: {c}\nStand: {data['meta'].get('stand', '')}")
+                desc = f"Mitfahrer: {mate_txt}\nStand: {data['meta'].get('stand', '')}"
             else:
-                summary = f"📋 {i['label']}"
-                desc = f"{i['legname'] or i['label']}\n{i['von']}–{i['bis']}\nKürzel: {c}\nStand: {data['meta'].get('stand', '')}"
+                desc = f"{i['legname'] or i['label']}\nStand: {data['meta'].get('stand', '')}"
             uid = hashlib.sha1(f"{person['name']}|{year}-{month:02d}-{int(d):02d}|{c}".encode()).hexdigest()[:20]
             lines += ["BEGIN:VEVENT", f"UID:{uid}@dienstplan-rw18", f"DTSTAMP:{stamp}",
                       f"DTSTART;TZID=Europe/Berlin:{st:%Y%m%dT%H%M%S}", f"DTEND;TZID=Europe/Berlin:{en:%Y%m%dT%H%M%S}",
