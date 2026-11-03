@@ -193,6 +193,22 @@ nav button.on{color:var(--red)}
 .sheet p{font-size:14px;color:var(--muted);margin:6px 0 0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:50;background:#1c1c1e;color:#fff;
   padding:11px 16px;border-radius:12px;font-size:14px;max-width:92vw;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+/* Tutorial */
+#tour{position:fixed;inset:0;z-index:60}
+#tour .hl{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.62);transition:all .3s ease;pointer-events:none}
+#tour .hl.none{width:0!important;height:0!important;left:50%!important;top:45%!important}
+#tour .tip{position:fixed;left:12px;right:12px;max-width:420px;margin:0 auto;background:var(--card);border-radius:16px;padding:16px 16px 12px;
+  box-shadow:0 12px 40px rgba(0,0,0,.35);transition:top .3s ease}
+#tour .tip .st{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px}
+#tour .tip h4{margin:0 0 6px;font-size:18px}
+#tour .tip p{margin:0 0 12px;font-size:15px;color:var(--ink2);line-height:1.4}
+#tour .tip .bt{display:flex;gap:8px;align-items:center}
+#tour .tip .bt .sk{border:0;background:none;color:var(--muted);font-size:14px;padding:8px 4px;margin-right:auto}
+#tour .tip .bt .bk{border:0;background:var(--fill);border-radius:10px;padding:9px 14px;font-weight:600}
+#tour .tip .bt .nx{border:0;background:var(--red);color:#fff;border-radius:10px;padding:9px 16px;font-weight:600}
+#tour .dots{display:flex;gap:4px;margin-bottom:8px}
+#tour .dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+#tour .dots i.on{background:var(--red);width:16px;border-radius:3px}
 .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:22px}
 .foot button{border:0;background:none;color:var(--muted);text-decoration:underline;font-size:12px}
 </style>
@@ -256,7 +272,7 @@ nav button.on{color:var(--red)}
       <div id="pview"></div>
     </section>
 
-    <div class="foot">Quelle: CareMan · Stand <span id="stand2"></span><br><button id="logout">Abmelden</button></div>
+    <div class="foot">Quelle: CareMan · Stand <span id="stand2"></span><br><button id="tourAgain">Tutorial nochmal ansehen</button> · <button id="logout">Abmelden</button></div>
   </div>
 
   <nav>
@@ -268,6 +284,7 @@ nav button.on{color:var(--red)}
 
 <div class="scrim" id="scrim" hidden><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast" hidden></div>
+<div id="tour" hidden><div class="hl" id="tourHl"></div><div class="tip" id="tourTip"></div></div>
 
 <script>
 const ENC = /*__ENC__*/null;
@@ -633,6 +650,60 @@ async function refresh(){
   finally { btn.classList.remove("spin"); }
 }
 
+/* ---------- Tutorial ---------- */
+const isStandalone = () => window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+function tourSteps(){
+  const st = [
+    {title:"Willkommen! 👋", text:"Das ist der Dienstplan der RW 18 – immer aktuell aus CareMan. Ich zeige dir in einer Minute, was die Seite kann.", view:"wache"},
+    {sel:"#rf", title:"Immer aktuell", text:"Der Plan wird automatisch alle 2 Stunden aus CareMan geholt. Wenn du nicht warten willst: hier tippen – nach 2–3 Minuten lädt der neue Stand. Wann zuletzt aktualisiert wurde, steht links daneben.", view:"wache"},
+    {sel:"#strip", title:"Tag auswählen", text:"Tippe auf einen Tag – oder wische auf der Seite nach links/rechts. Ein oranger Punkt heißt: An diesem Tag ist mindestens ein Fahrzeug nicht voll besetzt.", view:"wache"},
+    {sel:"#units .card", title:"Wer fährt was?", text:"Pro Fahrzeug siehst du Tag- und Nachtdienst mit Besatzung. „● jetzt“ markiert die laufende Schicht. Orange = nur teilweise besetzt, rot = gar nicht besetzt. Praktikanten zählen nicht mit.", view:"wache"},
+    {sel:"#units .p", title:"Auf Namen tippen", text:"Tippe auf einen Namen, um alle Dienste dieser Person im Monat zu sehen.", view:"wache"},
+    {sel:"nav [data-v=kal]", title:"Dein eigener Kalender", text:"Hier findest du nur deine Dienste – wie im Apple-Kalender.", view:"wache"},
+  ];
+  if (me) st.push(
+    {sel:"#seg", title:"Tag · Woche · Monat", text:"Wechsle zwischen den Ansichten. Im Monat stehen die Kürzel (z. B. 81T, 83N). Tippe auf einen Dienst für Uhrzeit und Mitfahrer.", view:"kal"},
+    {sel:"#cexp", title:"Ab in den iPhone-Kalender", text:"„Abonnieren“ legt einen Kalender „Dienst RW 18“ an, der sich automatisch aktualisiert. „Exportieren“ lädt die Dienste einmalig als Datei.", view:"kal"});
+  else st.push(
+    {sel:"#q2", title:"Wer bist du?", text:"Gib hier nach dem Tutorial deinen Namen ein. Danach siehst du deine Dienste als Tag-, Wochen- und Monatsansicht und kannst sie in den iPhone-Kalender übernehmen.", view:"kal"});
+  st.push({sel:"nav [data-v=pers]", title:"Personen", text:"Hier kannst du jede Person suchen. Mit „Das bin ich“ legst du fest, wessen Kalender du unter „Mein Kalender“ siehst.", view:"wache"});
+  if (!isStandalone()) st.push({title:"Tipp: Als App speichern 📱", text:"In Safari unten auf Teilen (□↑) tippen und „Zum Home-Bildschirm“ wählen. Dann hast du den Dienstplan wie eine App – mit eigenem Symbol.", view:"wache"});
+  st.push({title:"Fertig! ✅", text:"Das war's. Das Tutorial kannst du jederzeit unten auf der Seite nochmal starten.", view:"wache"});
+  return st;
+}
+let tourI = 0, tourS = [];
+function startTour(){ tourS = tourSteps(); tourI = 0; $("tour").hidden = false; tourShow(); }
+function endTour(){ $("tour").hidden = true; store.set("dp_tour", "1"); show("wache"); }
+function tourShow(){
+  const s = tourS[tourI];
+  if (s.view && !document.querySelector(`nav [data-v=${s.view}]`).classList.contains("on")) show(s.view);
+  const el = s.sel ? document.querySelector(s.sel) : null;
+  const hl = $("tourHl"), tip = $("tourTip");
+  tip.innerHTML = `<div class="dots">${tourS.map((_,k) => `<i class="${k===tourI?"on":""}"></i>`).join("")}</div>
+    <h4>${s.title}</h4><p>${s.text}</p>
+    <div class="bt">${tourI < tourS.length-1 ? '<button class="sk" id="tSk">Überspringen</button>' : '<span class="sk"></span>'}
+      ${tourI ? '<button class="bk" id="tBk">Zurück</button>' : ""}
+      <button class="nx" id="tNx">${tourI === tourS.length-1 ? "Los geht's" : tourI === 0 ? "Tour starten" : "Weiter"}</button></div>`;
+  $("tNx").onclick = () => { if (tourI < tourS.length-1){ tourI++; tourShow(); } else endTour(); };
+  if ($("tBk")) $("tBk").onclick = () => { tourI--; tourShow(); };
+  if ($("tSk")) $("tSk").onclick = endTour;
+  const place = () => {
+    if (!el){ hl.className = "hl none"; tip.style.top = Math.max(80, innerHeight/2 - tip.offsetHeight/2) + "px"; return; }
+    const r = el.getBoundingClientRect(), pad = 6;
+    hl.className = "hl";
+    Object.assign(hl.style, {left:(r.left-pad)+"px", top:(r.top-pad)+"px", width:(r.width+2*pad)+"px", height:(r.height+2*pad)+"px"});
+    const below = r.bottom + pad + 12, th = tip.offsetHeight;
+    tip.style.top = (below + th < innerHeight - 10 ? below : Math.max(10, r.top - pad - 12 - th)) + "px";
+  };
+  if (el && getComputedStyle(el.closest("nav") || el).position !== "fixed" && !el.closest("header")){
+    const r = el.getBoundingClientRect();
+    if (r.top < 120 || r.bottom > innerHeight - 260) window.scrollTo({top: window.scrollY + r.top - 140});
+  }
+  requestAnimationFrame(() => requestAnimationFrame(place));
+  setTimeout(place, 350);
+}
+addEventListener("resize", () => { if (!$("tour").hidden) tourShow(); });
+
 /* ---------- Ablauf ---------- */
 function show(v){
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
@@ -689,7 +760,9 @@ function start(data){
   $("hits").onclick = e => { const b = e.target.closest("[data-pick]"); if (b){ $("hits").innerHTML = ""; $("q").value = ""; renderPerson(b.dataset.pick); } };
   $("rf").onclick = refresh;
   $("logout").onclick = () => { store.del("dp_pw"); location.reload(); };
+  $("tourAgain").onclick = startTour;
   show(store.get("dp_tab") || "wache");
+  if (!store.get("dp_tour")) setTimeout(startTour, 500);
 
   // Beim Öffnen prüfen, ob es schon einen neueren Stand gibt (Home-Bildschirm-App hält alte Seiten gern fest)
   if (/^https?:/.test(location.protocol)) standNow().then(v => {
