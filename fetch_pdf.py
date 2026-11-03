@@ -117,6 +117,27 @@ def any_visible(cands):
     return False
 
 
+SPINNER = ("mat-spinner, mat-progress-spinner, .mat-mdc-progress-spinner, .mdc-circular-progress, "
+           "[role=progressbar], .spinner, .loading, .loader")
+
+
+def wait_loaded(page, timeout=90):
+    """Wartet, bis kein Ladekreis mehr zu sehen ist (CareMan lädt nach dem Login eine Weile)."""
+    end = time.time() + timeout
+    page.wait_for_timeout(1000)
+    while time.time() < end:
+        try:
+            spinning = page.locator(SPINNER).evaluate_all(
+                "els => els.some(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; })")
+        except Exception:
+            spinning = False
+        if not spinning:
+            page.wait_for_timeout(1500)
+            return
+        page.wait_for_timeout(1000)
+    log("Hinweis: Ladekreis nach 90 s immer noch sichtbar – mache trotzdem weiter")
+
+
 def login(page):
     page.goto(URL, wait_until="networkidle")
     shot(page, "start")
@@ -139,6 +160,7 @@ def login(page):
         shot(page, "login_fehlgeschlagen")
         raise SystemExit("Login fehlgeschlagen – Benutzername/Passwort prüfen (oder Zusatzcode/Captcha?).")
     page.wait_for_load_state("networkidle")
+    wait_loaded(page)
     log("eingeloggt")
     shot(page, "eingeloggt")
 
@@ -157,6 +179,21 @@ def open_menu(page):
         ("aria Menü/Navigation", lambda: page.get_by_role("button", name=re.compile(r"men[uü]|navigation|toggle", re.I))),
         ("Icon 'apps'", lambda: page.locator("button:has(mat-icon:text-is('apps'))")),
     ]
+    end = time.time() + 60
+    tried = set()
+    while time.time() < end:
+        wait_loaded(page, timeout=30)
+        if any_visible(target):
+            return
+        if try_menu_buttons(page, menu_buttons, target, tried):
+            return
+        page.wait_for_timeout(2000)
+    shot(page, "menue_nicht_gefunden")
+    dump_clickables(page)
+    raise SystemExit("Menü mit 'Berichte' nicht gefunden.")
+
+
+def try_menu_buttons(page, menu_buttons, target, tried):
     for name, make in menu_buttons:
         try:
             loc = make()
@@ -171,17 +208,18 @@ def open_menu(page):
                 el.click()
             except Exception:
                 continue
-            page.wait_for_timeout(1500)
-            if any_visible(target):
-                log(f"Menü geöffnet über: {name}")
-                shot(page, "menue_offen")
-                return
-            log(f"Menü-Versuch ohne Erfolg: {name}")
+            for _ in range(6):          # bis zu 3 s auf das aufklappende Menü warten
+                page.wait_for_timeout(500)
+                if any_visible(target):
+                    log(f"Menü geöffnet über: {name}")
+                    shot(page, "menue_offen")
+                    return True
+            if name not in tried:
+                log(f"Menü-Versuch ohne Erfolg: {name}")
+                tried.add(name)
             page.keyboard.press("Escape")
             page.wait_for_timeout(500)
-    shot(page, "menue_nicht_gefunden")
-    dump_clickables(page)
-    raise SystemExit("Menü mit 'Berichte' nicht gefunden.")
+    return False
 
 
 def choose_group(page):
@@ -294,6 +332,7 @@ def main(out):
         shot(page, "berichte")
         click_first(page, "Abteilungsplan (Menü)", by_text(page, "Abteilungsplan"))
         page.wait_for_load_state("networkidle")
+        wait_loaded(page)
         shot(page, "berichtsseite")
         choose_group(page)
         shot(page, "gruppe_gewaehlt")
