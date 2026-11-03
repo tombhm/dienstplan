@@ -70,11 +70,17 @@ def click_first(page, what, candidates, timeout=20):
 def dump_clickables(page):
     """Hilft beim Anpassen: listet anklickbare Elemente (ohne Inhalte des Dienstplans)."""
     try:
-        items = page.evaluate("""() => [...document.querySelectorAll(
-            'button,a,[role=button],[role=menuitem],select,input,label,[onclick],mat-icon,i,span[class*=icon]')]
-            .filter(e => e.offsetParent !== null).slice(0, 80)
+        items = page.evaluate("""() => [...document.querySelectorAll('body *')]
+            .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0
+                && getComputedStyle(e).visibility !== 'hidden'
+                && ([...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())
+                    || /^(BUTTON|A|INPUT|SELECT|MAT-SELECT|MAT-CHECKBOX)$/.test(e.tagName)
+                    || /button|menuitem|option|checkbox|combobox|switch|radio|tab/.test(e.getAttribute('role') || '')); })
+            .slice(0, 150)
             .map(e => `${e.tagName.toLowerCase()} class="${(e.className && e.className.baseVal !== undefined ? e.className.baseVal : e.className) || ''}" `
-                    + `aria="${e.getAttribute('aria-label') || ''}" text="${(e.innerText || e.value || '').trim().slice(0, 40)}"`)""")
+                    + `role="${e.getAttribute('role') || ''}" aria="${e.getAttribute('aria-label') || ''}" `
+                    + `text="${(e.innerText || e.value || '').trim().replace(/\\s+/g, ' ').slice(0, 50)}"`)""")
+        items = [re.sub(r"[A-ZÄÖÜ][\wäöüß-]+, ?[A-ZÄÖÜ][\wäöüß-]+", "[Name]", i) for i in items]
         log("Sichtbare Elemente auf der Seite:\n  " + "\n  ".join(items))
     except Exception as e:
         log(f"(Elementliste nicht möglich: {e})")
@@ -82,7 +88,33 @@ def dump_clickables(page):
 
 
 def text_re(t):
-    return re.compile(r"^\s*" + re.escape(t) + r"\s*$", re.I)
+    """Passt auf 't' – auch wenn davor ein Material-Icon-Wort steht (z. B. 'apps Menü')."""
+    return re.compile(r"(^|\s)" + re.escape(t) + r"\s*$", re.I)
+
+
+def by_text(page, t, roles=("menuitem", "link", "button", "tab", "treeitem", "option")):
+    """Kandidaten für ein Element mit der Beschriftung t, vom genauesten zum ungenauesten."""
+    lit = t.replace("'", "")
+    c = [lambda r=r: page.get_by_role(r, name=text_re(t)) for r in roles]
+    c += [
+        lambda: page.locator(f"xpath=//*[normalize-space(text())='{lit}']"),
+        lambda: page.get_by_text(t, exact=True),
+        lambda: page.get_by_text(text_re(t)),
+        lambda: page.get_by_text(re.compile(r"\b" + re.escape(t) + r"\b", re.I)),
+    ]
+    return c
+
+
+def any_visible(cands):
+    for make in cands:
+        try:
+            loc = make()
+            for i in range(min(loc.count(), 10)):
+                if loc.nth(i).is_visible():
+                    return True
+        except Exception:
+            pass
+    return False
 
 
 def login(page):
@@ -112,15 +144,44 @@ def login(page):
 
 
 def open_menu(page):
-    click_first(page, "Menü (drei Balken)", [
-        lambda: page.get_by_role("button", name=re.compile(r"men[uü]|navigation|toggle", re.I)),
-        lambda: page.locator("[class*=hamburger],[class*=burger],[class*=menu-toggle],[class*=navbar-toggle],"
-                             "[class*=sidenav-toggle],[class*=nav-toggle],[class*=menuButton],[class*=menu-button]"),
-        lambda: page.locator("[class*=fa-bars],[class*=icon-menu],[class*=mdi-menu],.pi-bars,[data-icon=bars]"),
-        lambda: page.locator("mat-icon,i,span.material-icons,span.material-symbols-outlined").filter(has_text=text_re("menu")),
-        lambda: page.get_by_text("☰"),
-    ])
-    shot(page, "menue_offen")
+    """Öffnet das Hauptmenü. Probiert mehrere Knöpfe, bis 'Berichte' sichtbar ist."""
+    target = by_text(page, "Berichte")
+    if any_visible(target):
+        return
+    menu_buttons = [
+        ("Knopf 'Menü'", lambda: page.get_by_role("button", name=re.compile(r"(^|\s)men[uü]\s*$", re.I))),
+        ("Icon 'menu'", lambda: page.locator("button:has(mat-icon:text-is('menu')), a:has(mat-icon:text-is('menu'))")),
+        ("Icon 'menu' (ohne Knopf)", lambda: page.locator("mat-icon:text-is('menu'), span.material-icons:text-is('menu')")),
+        ("Hamburger-Klasse", lambda: page.locator("[class*=hamburger],[class*=burger],[class*=menu-toggle],[class*=navbar-toggle],"
+                                                  "[class*=sidenav-toggle],[class*=nav-toggle],[class*=fa-bars],.pi-bars")),
+        ("aria Menü/Navigation", lambda: page.get_by_role("button", name=re.compile(r"men[uü]|navigation|toggle", re.I))),
+        ("Icon 'apps'", lambda: page.locator("button:has(mat-icon:text-is('apps'))")),
+    ]
+    for name, make in menu_buttons:
+        try:
+            loc = make()
+            n = loc.count()
+        except Exception:
+            continue
+        for i in range(min(n, 3)):
+            el = loc.nth(i)
+            try:
+                if not el.is_visible():
+                    continue
+                el.click()
+            except Exception:
+                continue
+            page.wait_for_timeout(1500)
+            if any_visible(target):
+                log(f"Menü geöffnet über: {name}")
+                shot(page, "menue_offen")
+                return
+            log(f"Menü-Versuch ohne Erfolg: {name}")
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(500)
+    shot(page, "menue_nicht_gefunden")
+    dump_clickables(page)
+    raise SystemExit("Menü mit 'Berichte' nicht gefunden.")
 
 
 def choose_group(page):
@@ -134,16 +195,15 @@ def choose_group(page):
             return
     # 2) eigene Dropdown-Komponente: Feld "Planungsgruppe" anklicken, dann Option
     click_first(page, "Filter Planungsgruppe", [
+        lambda: page.get_by_role("combobox", name=re.compile("Planungsgruppe", re.I)),
+        lambda: page.locator("mat-form-field:has(mat-label:text-matches('Planungsgruppe','i')) mat-select"),
         lambda: page.get_by_label(re.compile("Planungsgruppe", re.I)),
         lambda: page.get_by_role("combobox", name=re.compile("Planungsgruppe", re.I)),
         lambda: page.locator("*:has(> :text-is('Planungsgruppe')) >> [role=combobox], *:has(> :text-is('Planungsgruppe')) >> input"),
         lambda: page.get_by_text(re.compile(r"^\s*Planungsgruppe", re.I)),
     ])
-    click_first(page, f"Planungsgruppe {GROUP}", [
-        lambda: page.get_by_role("option", name=text_re(GROUP)),
-        lambda: page.get_by_role("checkbox", name=text_re(GROUP)),
-        lambda: page.get_by_text(text_re(GROUP)),
-    ])
+    click_first(page, f"Planungsgruppe {GROUP}",
+                by_text(page, GROUP, roles=("option", "checkbox", "menuitem", "radio", "treeitem")))
     page.keyboard.press("Escape")
 
 
@@ -167,6 +227,8 @@ def choose_all(page):
     click_first(page, "'alle anzeigen'", [
         lambda: page.get_by_role("option", name=re.compile(r"alle anzeigen", re.I)),
         lambda: page.get_by_role("radio", name=re.compile(r"alle anzeigen", re.I)),
+        lambda: page.get_by_role("checkbox", name=re.compile(r"alle anzeigen", re.I)),
+        lambda: page.get_by_role("switch", name=re.compile(r"alle anzeigen", re.I)),
         lambda: page.get_by_text(re.compile(r"alle anzeigen", re.I)),
     ])
 
@@ -228,18 +290,9 @@ def main(out):
         page = context.new_page()
         login(page)
         open_menu(page)
-        click_first(page, "Berichte", [
-            lambda: page.get_by_role("menuitem", name=text_re("Berichte")),
-            lambda: page.get_by_role("link", name=text_re("Berichte")),
-            lambda: page.get_by_role("button", name=text_re("Berichte")),
-            lambda: page.get_by_text(text_re("Berichte")),
-        ])
+        click_first(page, "Berichte", by_text(page, "Berichte"))
         shot(page, "berichte")
-        click_first(page, "Abteilungsplan (Menü)", [
-            lambda: page.get_by_role("menuitem", name=text_re("Abteilungsplan")),
-            lambda: page.get_by_role("link", name=text_re("Abteilungsplan")),
-            lambda: page.get_by_text(text_re("Abteilungsplan")),
-        ])
+        click_first(page, "Abteilungsplan (Menü)", by_text(page, "Abteilungsplan"))
         page.wait_for_load_state("networkidle")
         shot(page, "berichtsseite")
         choose_group(page)
