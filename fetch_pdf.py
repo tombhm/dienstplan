@@ -222,53 +222,102 @@ def try_menu_buttons(page, menu_buttons, target, tried):
     return False
 
 
+def mat_select(page, what, field_finders, option_re, done_re):
+    """Klappt ein Angular-Auswahlfeld auf und wählt die passende Option.
+    Ist schon das Richtige ausgewählt (done_re passt auf den angezeigten Text), passiert nichts."""
+    field = None
+    end = time.time() + 20
+    while time.time() < end and field is None:
+        for make in field_finders:
+            try:
+                loc = make()
+                for i in range(loc.count()):
+                    if loc.nth(i).is_visible():
+                        field = loc.nth(i)
+                        break
+            except Exception:
+                pass
+            if field is not None:
+                break
+        if field is None:
+            page.wait_for_timeout(500)
+    if field is None:
+        dump_clickables(page)
+        raise SystemExit(f"Auswahlfeld nicht gefunden: {what}")
+    current = (field.inner_text() or "").strip()
+    if done_re.search(current):
+        log(f"{what}: schon richtig ausgewählt")
+        return
+    field.click()
+    page.wait_for_timeout(800)
+    opt = page.get_by_role("option", name=option_re)
+    try:
+        opt.first.wait_for(state="visible", timeout=10000)
+    except Exception:
+        texts = page.get_by_role("option").all_inner_texts()
+        log(f"Optionen in '{what}': {texts}")
+        dump_clickables(page)
+        raise SystemExit(f"Option nicht gefunden in {what}")
+    opt.first.click()
+    page.wait_for_timeout(800)
+    page.keyboard.press("Escape")  # falls Mehrfachauswahl offen bleibt
+    page.wait_for_timeout(300)
+    log(f"{what}: gewählt -> {(field.inner_text() or '').strip()[:40]}")
+
+
+def field_by_label(page, label_re):
+    """Findet ein mat-select / Auswahlfeld anhand seiner Beschriftung (z. B. 'Filter Planungsgruppe')."""
+    return [
+        lambda: page.locator("mat-form-field").filter(
+            has=page.locator("mat-label, label").filter(has_text=label_re)).locator("mat-select, [role=combobox], select"),
+        lambda: page.get_by_role("combobox", name=label_re),
+    ]
+
+
 def choose_group(page):
-    # 1) echtes <select> mit passender Option
-    for i in range(page.locator("select").count()):
-        sel = page.locator("select").nth(i)
-        opts = sel.locator("option").all_inner_texts()
-        if any(o.strip() == GROUP for o in opts):
-            sel.select_option(label=next(o for o in opts if o.strip() == GROUP))
-            log(f"Planungsgruppe gewählt: {GROUP}")
-            return
-    # 2) eigene Dropdown-Komponente: Feld "Planungsgruppe" anklicken, dann Option
-    click_first(page, "Filter Planungsgruppe", [
-        lambda: page.get_by_role("combobox", name=re.compile("Planungsgruppe", re.I)),
-        lambda: page.locator("mat-form-field:has(mat-label:text-matches('Planungsgruppe','i')) mat-select"),
-        lambda: page.get_by_label(re.compile("Planungsgruppe", re.I)),
-        lambda: page.get_by_role("combobox", name=re.compile("Planungsgruppe", re.I)),
-        lambda: page.locator("*:has(> :text-is('Planungsgruppe')) >> [role=combobox], *:has(> :text-is('Planungsgruppe')) >> input"),
-        lambda: page.get_by_text(re.compile(r"^\s*Planungsgruppe", re.I)),
-    ])
-    click_first(page, f"Planungsgruppe {GROUP}",
-                by_text(page, GROUP, roles=("option", "checkbox", "menuitem", "radio", "treeitem")))
-    page.keyboard.press("Escape")
+    g = re.escape(GROUP)
+    mat_select(page, "Filter Planungsgruppe",
+               field_by_label(page, re.compile(r"^\s*Filter Planungsgruppe", re.I))
+               + field_by_label(page, re.compile(r"Planungsgruppe", re.I)),
+               option_re=re.compile(r"(^|\W)" + g + r"(\W|$)", re.I),
+               done_re=re.compile(r"(^|\W)" + g + r"(\W|$)", re.I))
 
 
 def choose_all(page):
-    loc = page.get_by_label(re.compile(r"alle anzeigen", re.I))
-    if visible(loc):
-        try:
-            loc.first.check()
-            log("'alle anzeigen' angehakt")
-            return
-        except Exception:
-            pass
-    for i in range(page.locator("select").count()):
-        sel = page.locator("select").nth(i)
-        opts = sel.locator("option").all_inner_texts()
-        hit = [o for o in opts if re.search(r"alle anzeigen", o, re.I)]
-        if hit:
-            sel.select_option(label=hit[0])
-            log("'alle anzeigen' gewählt")
-            return
-    click_first(page, "'alle anzeigen'", [
-        lambda: page.get_by_role("option", name=re.compile(r"alle anzeigen", re.I)),
-        lambda: page.get_by_role("radio", name=re.compile(r"alle anzeigen", re.I)),
-        lambda: page.get_by_role("checkbox", name=re.compile(r"alle anzeigen", re.I)),
-        lambda: page.get_by_role("switch", name=re.compile(r"alle anzeigen", re.I)),
-        lambda: page.get_by_text(re.compile(r"alle anzeigen", re.I)),
-    ])
+    mat_select(page, "Filter",
+               field_by_label(page, re.compile(r"^\s*Filter\s*\*?\s*$", re.I))
+               + [lambda: page.locator("mat-select, [role=combobox]").filter(has_text=re.compile(r"gleichem Dienst|anzeigen", re.I)),
+                  lambda: page.get_by_role("combobox", name=re.compile(r"^\s*Filter(?! Planungsgruppe)", re.I))],
+               option_re=re.compile(r"alle anzeigen", re.I),
+               done_re=re.compile(r"alle anzeigen", re.I))
+
+
+def click_report_button(page):
+    """Klickt den PDF-Eintrag 'Abteilungsplan' – das ist der UNTERE der beiden (oben ist die Überschrift)."""
+    end = time.time() + 20
+    while time.time() < end:
+        loc = page.locator("xpath=//*[normalize-space(text())='Abteilungsplan']")
+        best, best_y = None, -1
+        for i in range(loc.count()):
+            el = loc.nth(i)
+            try:
+                if not el.is_visible():
+                    continue
+                y = el.bounding_box()["y"]
+            except Exception:
+                continue
+            if y > best_y:
+                best, best_y = el, y
+        if best is not None and loc.count() >= 2:
+            # disabled? (grau, solange keine Planungsgruppe gewählt ist)
+            disabled = best.evaluate("e => !!e.closest('[disabled], .disabled, [aria-disabled=true], .mat-mdc-list-item-disabled')")
+            if not disabled:
+                best.click()
+                log("geklickt: Abteilungsplan (PDF)")
+                return
+        page.wait_for_timeout(500)
+    dump_clickables(page)
+    raise SystemExit("PDF-Knopf 'Abteilungsplan' nicht gefunden oder ausgegraut.")
 
 
 def grab_pdf(page, context, trigger):
@@ -328,9 +377,17 @@ def main(out):
         page = context.new_page()
         login(page)
         open_menu(page)
-        click_first(page, "Berichte", by_text(page, "Berichte"))
+        click_first(page, "Berichte", [
+            lambda: page.locator("button:has(mat-icon:text-is('print')), a:has(mat-icon:text-is('print'))"),
+        ] + by_text(page, "Berichte"))
         shot(page, "berichte")
-        click_first(page, "Abteilungsplan (Menü)", by_text(page, "Abteilungsplan"))
+        group_field = field_by_label(page, re.compile(r"Planungsgruppe", re.I))
+        if not any_visible(group_field):
+            click_first(page, "Abteilungsplan (aufklappen)", by_text(page, "Abteilungsplan"))
+            for _ in range(20):
+                if any_visible(group_field):
+                    break
+                page.wait_for_timeout(500)
         page.wait_for_load_state("networkidle")
         wait_loaded(page)
         shot(page, "berichtsseite")
@@ -340,12 +397,7 @@ def main(out):
         shot(page, "alle_anzeigen")
 
         def trigger():
-            click_first(page, "Abteilungsplan erzeugen", [
-                lambda: page.get_by_role("button", name=text_re("Abteilungsplan")),
-                lambda: page.locator("input[type=submit][value='Abteilungsplan'],input[type=button][value='Abteilungsplan']"),
-                lambda: page.get_by_role("button", name=re.compile("Abteilungsplan", re.I)),
-                lambda: page.get_by_text(text_re("Abteilungsplan")).last,
-            ])
+            click_report_button(page)
 
         data = grab_pdf(page, context, trigger)
         if data[:4] != b"%PDF":
