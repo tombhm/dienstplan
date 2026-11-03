@@ -24,20 +24,35 @@ jobs:
   server:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
-      - name: Server bei Cloudflare einrichten
-        uses: cloudflare/wrangler-action@v3
+
+      - uses: actions/setup-node@v4
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          secrets: |
-            APP_SECRET
-            RESEND_API_KEY
-            ADMIN_EMAIL
-            ADMIN_USERNAME
-            GH_TOKEN
-            GH_REPO
+          node-version: "22"
+
+      - name: Prüfen, ob alle Secrets da sind
+        env:
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+          GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+        run: |
+          fehlt=""
+          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID APP_SECRET RESEND_API_KEY ADMIN_EMAIL ADMIN_USERNAME GH_TOKEN; do
+            if [ -z "${!v}" ]; then fehlt="$fehlt $v"; fi
+          done
+          if [ -n "$fehlt" ]; then echo "::error::Diese Secrets fehlen in GitHub:$fehlt (GH_TOKEN = DISPATCH_TOKEN)"; exit 1; fi
+          echo "Alle Secrets vorhanden."
+
+      - name: Server bei Cloudflare anlegen
+        run: npx --yes wrangler@4 deploy
+
+      - name: Geheime Werte beim Server hinterlegen
         env:
           APP_SECRET: ${{ secrets.APP_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -45,6 +60,10 @@ jobs:
           ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
           GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
           GH_REPO: ${{ github.repository }}
+        run: |
+          python3 -c "import json,os; print(json.dumps({k: os.environ[k].strip() for k in ['APP_SECRET','RESEND_API_KEY','ADMIN_EMAIL','ADMIN_USERNAME','GH_TOKEN','GH_REPO']}))" > secrets.json
+          npx --yes wrangler@4 secret bulk secrets.json
+          rm -f secrets.json
 
   update:
     if: github.event_name == 'workflow_dispatch'
